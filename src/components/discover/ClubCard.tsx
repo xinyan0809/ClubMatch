@@ -5,8 +5,8 @@ import { Heart, MessageCircle, ClipboardList, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Club } from "@/data/clubs";
 
-// ── Avatar colour derived from club id ────────────────────────────────────────
-const AVATAR_COLOURS = [
+// ── Shared visual helpers (also used by ClubDetailModal) ─────────────────────
+export const AVATAR_COLOURS = [
   "bg-primary-600",
   "bg-violet-600",
   "bg-rose-500",
@@ -18,12 +18,11 @@ const AVATAR_COLOURS = [
   "bg-teal-600",
   "bg-indigo-600",
 ];
-function avatarColour(id: number) {
+export function avatarColour(id: number) {
   return AVATAR_COLOURS[(id - 1) % AVATAR_COLOURS.length];
 }
 
-// ── Tag colour cycling ─────────────────────────────────────────────────────────
-const TAG_COLOURS = [
+export const TAG_COLOURS = [
   "bg-primary-50 text-primary-700 ring-primary-200",
   "bg-violet-50  text-violet-700  ring-violet-200",
   "bg-amber-50   text-amber-700   ring-amber-200",
@@ -35,14 +34,17 @@ interface ClubCardProps {
   club: Club;
   isLiked: boolean;
   isApplied: boolean;
+  onOpen: () => void;
   onLike: () => void;
   onApply: () => void;
 }
 
-export function ClubCard({ club, isLiked, isApplied, onLike, onApply }: ClubCardProps) {
+export function ClubCard({ club, isLiked, isApplied, onOpen, onLike, onApply }: ClubCardProps) {
   return (
-    <article className="flex flex-col rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
-
+    <article
+      onClick={onOpen}
+      className="flex cursor-pointer flex-col rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
+    >
       {/* ── Top row: avatar + info + heart ────────────────────────────────── */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -70,9 +72,9 @@ export function ClubCard({ club, isLiked, isApplied, onLike, onApply }: ClubCard
           </div>
         </div>
 
-        {/* Heart / 心动 toggle */}
+        {/* Heart / 心动 toggle — stop propagation so it doesn't open the modal */}
         <button
-          onClick={onLike}
+          onClick={(e) => { e.stopPropagation(); onLike(); }}
           aria-label={isLiked ? "取消心动" : "加入心动社团"}
           className={cn(
             "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all active:scale-90",
@@ -105,14 +107,17 @@ export function ClubCard({ club, isLiked, isApplied, onLike, onApply }: ClubCard
         ))}
       </div>
 
-      {/* ── Description ───────────────────────────────────────────────────── */}
+      {/* ── Short description ──────────────────────────────────────────────── */}
       <p className="mt-3 line-clamp-2 flex-1 text-sm leading-relaxed text-gray-600">
-        {club.description}
+        {club.shortDescription}
       </p>
 
-      {/* ── Action buttons ────────────────────────────────────────────────── */}
-      <div className="mt-4 flex gap-2.5">
-        {/* Primary: 去沟通 — passes club name so messages page can open the right chat */}
+      {/* ── Action buttons — stop propagation so they don't open the modal ── */}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="mt-4 flex gap-2.5"
+      >
+        {/* Primary: 去沟通 */}
         <Link
           href={`/messages?club=${encodeURIComponent(club.name)}`}
           className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary-600 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-500 active:scale-95"

@@ -6,7 +6,8 @@ import {
   Dumbbell, Heart, Target, Users,
 } from "lucide-react";
 import { ClubCard } from "@/components/discover/ClubCard";
-import { ALL_CLUBS, CATEGORIES, type Category } from "@/data/clubs";
+import { ClubDetailModal } from "@/components/discover/ClubDetailModal";
+import { ALL_CLUBS, CATEGORIES, type Category, type Club } from "@/data/clubs";
 import { cn } from "@/lib/utils";
 
 // ── Category icons ────────────────────────────────────────────────────────────
@@ -23,10 +24,11 @@ const CATEGORY_ICONS: Record<Category, React.ReactNode> = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function DiscoverPage() {
-  const [query,    setQuery]    = useState("");
-  const [category, setCategory] = useState<Category>("全部");
-  const [liked,    setLiked]    = useState<Set<number>>(new Set());
-  const [applied,  setApplied]  = useState<Set<number>>(new Set());
+  const [query,        setQuery]        = useState("");
+  const [category,     setCategory]     = useState<Category>("全部");
+  const [liked,        setLiked]        = useState<Set<number>>(new Set());
+  const [applied,      setApplied]      = useState<Set<number>>(new Set());
+  const [selectedClub, setSelectedClub] = useState<Club | null>(null);
 
   const toggleLike = (id: number) =>
     setLiked((prev) => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
@@ -41,7 +43,7 @@ export default function DiscoverPage() {
       if (!q) return true;
       return (
         c.name.toLowerCase().includes(q) ||
-        c.description.toLowerCase().includes(q) ||
+        c.shortDescription.toLowerCase().includes(q) ||
         c.tags.some((t) => t.toLowerCase().includes(q))
       );
     });
@@ -74,9 +76,9 @@ export default function DiscoverPage() {
                     key={cat}
                     onClick={() => setCategory(cat)}
                     className={cn(
-                      "flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors text-left",
+                      "flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors",
                       category === cat
-                        ? "bg-primary-50 text-primary-700 font-semibold"
+                        ? "bg-primary-50 font-semibold text-primary-700"
                         : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
                     )}
                   >
@@ -164,6 +166,7 @@ export default function DiscoverPage() {
                     club={club}
                     isLiked={liked.has(club.id)}
                     isApplied={applied.has(club.id)}
+                    onOpen={() => setSelectedClub(club)}
                     onLike={() => toggleLike(club.id)}
                     onApply={() => handleApply(club.id)}
                   />
@@ -180,7 +183,7 @@ export default function DiscoverPage() {
                 </div>
                 <button
                   onClick={() => { setQuery(""); setCategory("全部"); }}
-                  className="mt-1 rounded-xl bg-primary-600 px-5 py-2 text-sm font-semibold text-white hover:bg-primary-500 active:scale-95 transition-all"
+                  className="mt-1 rounded-xl bg-primary-600 px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-primary-500 active:scale-95"
                 >
                   重置筛选
                 </button>
@@ -189,6 +192,18 @@ export default function DiscoverPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Club detail modal ─────────────────────────────────────────────── */}
+      {selectedClub && (
+        <ClubDetailModal
+          club={selectedClub}
+          isLiked={liked.has(selectedClub.id)}
+          isApplied={applied.has(selectedClub.id)}
+          onClose={() => setSelectedClub(null)}
+          onLike={() => toggleLike(selectedClub.id)}
+          onApply={() => handleApply(selectedClub.id)}
+        />
+      )}
     </div>
   );
 }
