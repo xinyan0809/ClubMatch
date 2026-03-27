@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Compass, MessageCircle, User, Bell } from "lucide-react";
@@ -16,6 +17,12 @@ const navLinks = [
 
 export function TopNav() {
   const pathname = usePathname();
+  const [initial, setInitial] = useState("同");
+
+  useEffect(() => {
+    const stored = localStorage.getItem("cm_userName");
+    if (stored?.trim()) setInitial(stored.trim()[0]);
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 hidden md:flex w-full border-b border-border bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
@@ -60,10 +67,12 @@ export function TopNav() {
           <Button variant="ghost" size="icon" aria-label="通知">
             <Bell size={18} className="text-gray-600" />
           </Button>
-          <Avatar className="h-8 w-8 cursor-pointer">
-            <AvatarImage src="" alt="用户头像" />
-            <AvatarFallback>同</AvatarFallback>
-          </Avatar>
+          <Link href="/profile" aria-label="前往个人主页">
+            <Avatar className="h-8 w-8 cursor-pointer ring-2 ring-transparent hover:ring-primary-300 transition-all">
+              <AvatarImage src="" alt="用户头像" />
+              <AvatarFallback>{initial}</AvatarFallback>
+            </Avatar>
+          </Link>
         </div>
       </div>
     </header>

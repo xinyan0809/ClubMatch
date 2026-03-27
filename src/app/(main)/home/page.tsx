@@ -1,18 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Heart, MessageCircle, Share2, MoreHorizontal,
-  CheckCircle2, Circle, ChevronRight,
-  CalendarClock, MapPin, Clock, Inbox,
+  Circle, ChevronRight,
+  CalendarClock, Inbox,
   Megaphone, HelpCircle, Newspaper,
-  Sparkles,
+  Sparkles, CalendarX,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  TYPES & DATA
+//  POST DATA TYPES
 // ─────────────────────────────────────────────────────────────────────────────
 
 type TagStyle = "amber" | "blue" | "green" | "violet";
@@ -31,10 +31,10 @@ interface Post {
 }
 
 const TAG_STYLES: Record<TagStyle, string> = {
-  amber:  "bg-amber-50  text-amber-700  ring-amber-200",
-  blue:   "bg-blue-50   text-blue-700   ring-blue-200",
+  amber:  "bg-amber-50   text-amber-700  ring-amber-200",
+  blue:   "bg-blue-50    text-blue-700   ring-blue-200",
   green:  "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  violet: "bg-violet-50 text-violet-700  ring-violet-200",
+  violet: "bg-violet-50  text-violet-700  ring-violet-200",
 };
 
 const TAG_ICONS: Record<TagStyle, React.ElementType> = {
@@ -49,208 +49,107 @@ const POSTS: Post[] = [
     id: 1,
     tag: "招新公告",
     tagStyle: "amber",
-    author: {
-      name: "街舞社",
-      role: "官方账号",
-      initials: "舞",
-      avatarBg: "bg-pink-500",
-    },
+    author: { name: "街舞社", role: "官方账号", initials: "舞", avatarBg: "bg-pink-500" },
     timestamp: "2 分钟前",
     content:
       "🔥 街舞社招新宣讲会今晚正式开始！\n\n今晚 19:00，主楼大厅见！带上你的热情，不需要任何舞蹈基础，只要你敢来！现场设有 Breaking、Popping、Urban 风格展示，报名即送周边礼品 🎁\n\n快来找到属于你的节拍！",
-    image: {
-      gradient: "from-pink-500 via-rose-500 to-purple-600",
-      label: "今晚 19:00 · 主楼大厅",
-    },
-    likes: 48,
-    comments: 12,
-    shares: 7,
+    image: { gradient: "from-pink-500 via-rose-500 to-purple-600", label: "今晚 19:00 · 主楼大厅" },
+    likes: 48, comments: 12, shares: 7,
   },
   {
     id: 2,
     tag: "社团动态",
     tagStyle: "blue",
-    author: {
-      name: "AI 与机器学习协会",
-      role: "官方账号",
-      initials: "AI",
-      avatarBg: "bg-indigo-600",
-    },
+    author: { name: "AI 与机器学习协会", role: "官方账号", initials: "AI", avatarBg: "bg-indigo-600" },
     timestamp: "15 分钟前",
     content:
       "📖 本周读书会推荐：《深度学习》（Goodfellow 著）第三章 — 概率与信息论\n\n周六上午 10:00，图书馆 B3 研讨室。本期由大三的张学长主讲，他刚拿到 CVPR 2026 的 paper！感兴趣的同学提前在群里打卡即可参加 🧠",
-    likes: 31,
-    comments: 8,
-    shares: 3,
+    likes: 31, comments: 8, shares: 3,
   },
   {
     id: 3,
     tag: "同学提问",
     tagStyle: "green",
-    author: {
-      name: "林宇轩",
-      role: "新闻传播学 · 大一",
-      initials: "林",
-      avatarBg: "bg-teal-500",
-    },
+    author: { name: "林宇轩", role: "新闻传播学 · 大一", initials: "林", avatarBg: "bg-teal-500" },
     timestamp: "1 小时前",
     content:
       "求问大家 📢\n\n作为大一新生，同时加入两个社团会不会太累？我在考虑辩论社和摄影协会，两个都很喜欢，但不知道能不能兼顾课业…\n\n有没有学长学姐能分享一下经验？🙏",
-    likes: 19,
-    comments: 24,
-    shares: 1,
+    likes: 19, comments: 24, shares: 1,
   },
   {
     id: 4,
     tag: "社团动态",
     tagStyle: "blue",
-    author: {
-      name: "机器人与硬件实验室",
-      role: "官方账号",
-      initials: "机",
-      avatarBg: "bg-cyan-600",
-    },
+    author: { name: "机器人与硬件实验室", role: "官方账号", initials: "机", avatarBg: "bg-cyan-600" },
     timestamp: "3 小时前",
     content:
       "🤖 本学期第一个项目——智能分拣机械臂，已完成主体搭建！\n\n感谢所有参与同学连续 4 周的努力。下周进入 AI 视觉识别模块的训练阶段，有兴趣的同学可以申请旁听，私信我们即可。",
-    image: {
-      gradient: "from-cyan-600 via-blue-600 to-indigo-700",
-      label: "智能分拣机械臂 · 项目进度 Week 4",
-    },
-    likes: 67,
-    comments: 15,
-    shares: 22,
+    image: { gradient: "from-cyan-600 via-blue-600 to-indigo-700", label: "智能分拣机械臂 · 项目进度 Week 4" },
+    likes: 67, comments: 15, shares: 22,
   },
 ];
-
-// Profile completion steps
-const PROFILE_STEPS = [
-  { label: "基本信息", done: true  },
-  { label: "技能标签", done: true  },
-  { label: "MBTI 测试", done: true },
-  { label: "自我介绍", done: false },
-  { label: "上传头像", done: false },
-];
-const DONE_COUNT  = PROFILE_STEPS.filter((s) => s.done).length;  // 3
-const TOTAL_STEPS = PROFILE_STEPS.length;                         // 5
-const PCT         = Math.round((DONE_COUNT / TOTAL_STEPS) * 100); // 60
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  POST CARD
 // ─────────────────────────────────────────────────────────────────────────────
 
 function PostCard({ post, liked, onLike }: {
-  post: Post;
-  liked: boolean;
-  onLike: () => void;
+  post: Post; liked: boolean; onLike: () => void;
 }) {
   const TagIcon = TAG_ICONS[post.tagStyle];
-
   return (
     <article className="rounded-2xl border border-gray-100 bg-white shadow-sm transition-shadow hover:shadow-md">
-
-      {/* ── Header ────────────────────────────────────────── */}
+      {/* Header */}
       <div className="flex items-start justify-between px-5 pt-5">
         <div className="flex items-start gap-3">
-          {/* Avatar */}
-          <div
-            className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white",
-              post.author.avatarBg
-            )}
-          >
+          <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white", post.author.avatarBg)}>
             {post.author.initials}
           </div>
-
-          {/* Name + meta */}
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-gray-900">
-                {post.author.name}
-              </span>
-              <span
-                className={cn(
-                  "flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1",
-                  TAG_STYLES[post.tagStyle]
-                )}
-              >
+              <span className="text-sm font-bold text-gray-900">{post.author.name}</span>
+              <span className={cn("flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1", TAG_STYLES[post.tagStyle])}>
                 <TagIcon size={9} />
                 {post.tag}
               </span>
             </div>
-            <p className="mt-0.5 text-xs text-gray-400">
-              {post.author.role} · {post.timestamp}
-            </p>
+            <p className="mt-0.5 text-xs text-gray-400">{post.author.role} · {post.timestamp}</p>
           </div>
         </div>
-
         <button className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
           <MoreHorizontal size={16} />
         </button>
       </div>
 
-      {/* ── Body ──────────────────────────────────────────── */}
+      {/* Body */}
       <div className="px-5 pt-3">
-        <p className="whitespace-pre-line text-sm leading-relaxed text-gray-700">
-          {post.content}
-        </p>
+        <p className="whitespace-pre-line text-sm leading-relaxed text-gray-700">{post.content}</p>
       </div>
 
-      {/* ── Optional image ────────────────────────────────── */}
+      {/* Optional image */}
       {post.image && (
         <div className="mx-5 mt-3 overflow-hidden rounded-xl">
-          <div
-            className={cn(
-              "relative flex h-44 items-end bg-gradient-to-br p-4 sm:h-52",
-              post.image.gradient
-            )}
-          >
-            {/* Subtle dot pattern overlay */}
-            <div
-              className="absolute inset-0 opacity-10"
-              style={{
-                backgroundImage:
-                  "radial-gradient(circle, #ffffff 1px, transparent 1px)",
-                backgroundSize: "20px 20px",
-              }}
-            />
-            <span className="relative z-10 rounded-lg bg-black/30 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
-              {post.image.label}
-            </span>
+          <div className={cn("relative flex h-44 items-end bg-gradient-to-br p-4 sm:h-52", post.image.gradient)}>
+            <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle,#ffffff 1px,transparent 1px)", backgroundSize: "20px 20px" }} />
+            <span className="relative z-10 rounded-lg bg-black/30 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">{post.image.label}</span>
           </div>
         </div>
       )}
 
-      {/* ── Footer: action buttons ─────────────────────────── */}
+      {/* Footer */}
       <div className="flex items-center gap-1 border-t border-gray-50 px-4 py-3 mt-3">
-        {/* Like */}
         <button
           onClick={onLike}
-          className={cn(
-            "flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all",
-            liked
-              ? "bg-red-50 text-red-500"
-              : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-          )}
+          className={cn("flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all", liked ? "bg-red-50 text-red-500" : "text-gray-500 hover:bg-gray-100 hover:text-gray-700")}
         >
-          <Heart
-            size={15}
-            className={cn("transition-transform", liked && "scale-110")}
-            fill={liked ? "currentColor" : "none"}
-          />
+          <Heart size={15} className={cn("transition-transform", liked && "scale-110")} fill={liked ? "currentColor" : "none"} />
           {post.likes + (liked ? 1 : 0)}
         </button>
-
-        {/* Comment */}
         <button className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors">
-          <MessageCircle size={15} />
-          {post.comments}
+          <MessageCircle size={15} /> {post.comments}
         </button>
-
-        {/* Share */}
         <button className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors">
-          <Share2 size={15} />
-          {post.shares}
+          <Share2 size={15} /> {post.shares}
         </button>
       </div>
     </article>
@@ -258,112 +157,71 @@ function PostCard({ post, liked, onLike }: {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  SIDEBAR WIDGETS
+//  SIDEBAR WIDGETS  — all start in empty / zero state for a new user
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ProfileWidget() {
+  // New user: 0 steps completed → 0%
+  const steps = [
+    { label: "基本信息",  done: false },
+    { label: "技能标签",  done: false },
+    { label: "MBTI 测试", done: false },
+    { label: "自我介绍",  done: false },
+    { label: "上传头像",  done: false },
+  ];
+
   return (
     <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-      {/* Title row */}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold text-gray-900">完善个人名片</h3>
-        <span className="text-xs font-bold text-primary-600">{PCT}%</span>
+        <span className="text-xs font-bold text-gray-400">0%</span>
       </div>
 
-      {/* Progress bar */}
+      {/* Progress bar — empty */}
       <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-gray-100">
-        <div
-          className="h-full rounded-full bg-gradient-to-r from-primary-500 to-violet-500 transition-all duration-700"
-          style={{ width: `${PCT}%` }}
-        />
+        <div className="h-full w-0 rounded-full bg-gradient-to-r from-primary-500 to-violet-500 transition-all duration-700" />
       </div>
-      <p className="mt-1.5 text-[11px] text-gray-400">
-        再完善 {TOTAL_STEPS - DONE_COUNT} 项，解锁「优质候选人」徽章 🏅
-      </p>
+      <p className="mt-1.5 text-[11px] text-gray-400">完善 5 项后解锁「优质候选人」徽章 🏅</p>
 
       {/* Step checklist */}
       <ul className="mt-4 space-y-2">
-        {PROFILE_STEPS.map(({ label, done }) => (
+        {steps.map(({ label }) => (
           <li key={label} className="flex items-center gap-2.5 text-xs">
-            {done ? (
-              <CheckCircle2 size={14} className="shrink-0 text-emerald-500" />
-            ) : (
-              <Circle size={14} className="shrink-0 text-gray-300" />
-            )}
-            <span className={done ? "text-gray-500 line-through" : "font-medium text-gray-700"}>
-              {label}
-            </span>
-            {!done && (
-              <span className="ml-auto rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600 ring-1 ring-amber-200">
-                待完善
-              </span>
-            )}
+            <Circle size={14} className="shrink-0 text-gray-300" />
+            <span className="font-medium text-gray-700">{label}</span>
+            <span className="ml-auto rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600 ring-1 ring-amber-200">待完善</span>
           </li>
         ))}
       </ul>
 
-      {/* CTA */}
-      <Link
-        href="/profile"
-        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 py-2.5 text-xs font-bold text-white transition-colors hover:bg-primary-500 active:scale-95"
-      >
-        去完善
-        <ChevronRight size={13} />
+      <Link href="/profile" className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 py-2.5 text-xs font-bold text-white transition-colors hover:bg-primary-500 active:scale-95">
+        去完善 <ChevronRight size={13} />
       </Link>
-
-      <p className="mt-2 text-center text-[11px] text-gray-400">
-        完善简历，让心仪社团主动发现你！
-      </p>
+      <p className="mt-2 text-center text-[11px] text-gray-400">完善简历，让心仪社团主动发现你！</p>
     </div>
   );
 }
 
 function InterviewWidget() {
+  // Empty state — no scheduled interviews for a new user
   return (
-    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
-      {/* Title */}
+    <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
       <div className="flex items-center gap-2">
-        <CalendarClock size={15} className="text-amber-600" />
-        <h3 className="text-sm font-bold text-amber-800">近期日程</h3>
-        <span className="ml-auto rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white">
-          今天
-        </span>
+        <CalendarClock size={15} className="text-gray-400" />
+        <h3 className="text-sm font-bold text-gray-900">近期日程</h3>
       </div>
 
-      {/* Interview card */}
-      <div className="mt-3 rounded-xl bg-white p-4 shadow-sm ring-1 ring-amber-100">
-        {/* Club + round */}
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <p className="text-sm font-bold text-gray-900">辩论社</p>
-            <p className="mt-0.5 text-xs text-gray-500">
-              第一轮 · 无领导小组面试
-            </p>
-          </div>
-          <span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold text-amber-700 ring-1 ring-amber-200">
-            待参加
-          </span>
+      <div className="mt-4 flex flex-col items-center gap-3 py-3 text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-50 ring-1 ring-gray-100">
+          <CalendarX size={20} className="text-gray-300" />
         </div>
-
-        {/* Time + place */}
-        <div className="mt-3 space-y-1.5">
-          <div className="flex items-center gap-2 text-xs text-gray-600">
-            <Clock size={12} className="text-amber-500" />
-            <span className="font-semibold text-amber-700">今天 19:00</span>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-gray-600">
-            <MapPin size={12} className="text-amber-500" />
-            <span>主楼 402 会议室</span>
-          </div>
+        <div>
+          <p className="text-sm font-medium text-gray-600">暂无日程</p>
+          <p className="mt-0.5 text-xs text-gray-400">申请社团后，面试通知会出现在这里</p>
         </div>
-
-        {/* Countdown pill */}
-        <div className="mt-3 flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-          <span className="text-[11px] font-semibold text-amber-700">
-            距开始约 2 小时，请做好准备 💪
-          </span>
-        </div>
+        <Link href="/discover" className="flex items-center gap-1.5 rounded-xl border border-primary-200 bg-primary-50 px-4 py-2 text-xs font-bold text-primary-600 transition-all hover:bg-primary-100 active:scale-95">
+          去申请社团 <ChevronRight size={13} />
+        </Link>
       </div>
     </div>
   );
@@ -372,33 +230,21 @@ function InterviewWidget() {
 function ApplicationsWidget() {
   return (
     <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-      {/* Title */}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold text-gray-900">我的投递</h3>
-        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-500">
-          0 条
-        </span>
+        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-500">0 条</span>
       </div>
 
-      {/* Empty state */}
       <div className="mt-5 flex flex-col items-center gap-3 py-2 text-center">
         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-50 ring-1 ring-gray-100">
           <Inbox size={24} className="text-gray-300" />
         </div>
         <div>
-          <p className="text-sm font-medium text-gray-700">
-            你还没有投递任何组织哦～
-          </p>
-          <p className="mt-1 text-xs text-gray-400">
-            去发现感兴趣的社团，开启你的大学故事
-          </p>
+          <p className="text-sm font-medium text-gray-700">你还没有投递任何组织哦～</p>
+          <p className="mt-1 text-xs text-gray-400">去发现感兴趣的社团，开启你的大学故事</p>
         </div>
-        <Link
-          href="/discover"
-          className="mt-1 flex items-center gap-1.5 rounded-xl border border-primary-200 bg-primary-50 px-4 py-2 text-xs font-bold text-primary-600 transition-all hover:bg-primary-100 active:scale-95"
-        >
-          去寻找合适的社团
-          <ChevronRight size={13} />
+        <Link href="/discover" className="mt-1 flex items-center gap-1.5 rounded-xl border border-primary-200 bg-primary-50 px-4 py-2 text-xs font-bold text-primary-600 transition-all hover:bg-primary-100 active:scale-95">
+          点击去寻找适合的社团 <ChevronRight size={13} />
         </Link>
       </div>
     </div>
@@ -410,7 +256,14 @@ function ApplicationsWidget() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
-  const [liked, setLiked] = useState<Set<number>>(new Set());
+  const [liked,    setLiked]    = useState<Set<number>>(new Set());
+  const [userName, setUserName] = useState<string>("");   // empty until hydrated
+
+  // Read from localStorage after mount (avoids SSR mismatch)
+  useEffect(() => {
+    const stored = localStorage.getItem("cm_userName");
+    setUserName(stored?.trim() || "");
+  }, []);
 
   const toggleLike = (id: number) =>
     setLiked((prev) => {
@@ -419,45 +272,39 @@ export default function HomePage() {
       return next;
     });
 
+  const displayName = userName || "同学";
+
   return (
     <div className="min-h-screen bg-[#f9fafb]">
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
 
-        {/* ── Personalised greeting ──────────────────────── */}
+        {/* ── Greeting ─────────────────────────────────────── */}
         <header className="mb-6">
           <h1 className="text-xl font-bold text-gray-900">
-            你好，思琦 👋
+            你好，{displayName} 👋
           </h1>
           <p className="mt-0.5 text-sm text-gray-500">
-            今天是你加入&nbsp;
+            欢迎加入&nbsp;
             <span className="font-semibold text-primary-600">中国传媒大学</span>
-            &nbsp;的第 7 天 · 期待你找到心仪的圈子 ✨
+            &nbsp;· 期待你找到心仪的圈子 ✨
           </p>
         </header>
 
-        {/* ── Two-column layout ──────────────────────────── */}
+        {/* ── Two-column layout ──────────────────────────────── */}
         <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
 
-          {/* ════════════ LEFT: FEED ════════════ */}
+          {/* ═══ LEFT: FEED ═══ */}
           <section className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-bold text-gray-700">校园动态</h2>
-              <button className="text-xs font-semibold text-primary-600 hover:underline">
-                查看全部
-              </button>
+              <button className="text-xs font-semibold text-primary-600 hover:underline">查看全部</button>
             </div>
-
             {POSTS.map((post) => (
-              <PostCard
-                key={post.id}
-                post={post}
-                liked={liked.has(post.id)}
-                onLike={() => toggleLike(post.id)}
-              />
+              <PostCard key={post.id} post={post} liked={liked.has(post.id)} onLike={() => toggleLike(post.id)} />
             ))}
           </section>
 
-          {/* ════════════ RIGHT: SIDEBAR ════════════ */}
+          {/* ═══ RIGHT: SIDEBAR ═══ */}
           <aside className="flex flex-col gap-4">
             <h2 className="text-sm font-bold text-gray-700">个人行动中心</h2>
             <ProfileWidget />

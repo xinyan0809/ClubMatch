@@ -178,6 +178,14 @@ export default function LoginPage() {
     await new Promise((r) => setTimeout(r, 900));
     setIsLoading(false);
 
+    // Persist session to localStorage so downstream pages can personalise UX
+    localStorage.setItem("cm_userRole", role);
+    localStorage.setItem("cm_userUniversity", "中国传媒大学");
+    // Only save name on signup (signin has no name field)
+    if (mode === "signup" && name.trim()) {
+      localStorage.setItem("cm_userName", name.trim());
+    }
+
     router.push(role === "student" ? "/home" : "/admin");
   };
 
