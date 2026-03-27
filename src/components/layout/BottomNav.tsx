@@ -6,10 +6,10 @@ import { Home, Compass, MessageCircle, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const tabs = [
-  { href: "/", label: "Home", icon: Home },
-  { href: "/discover", label: "Discover", icon: Compass },
-  { href: "/messages", label: "Messages", icon: MessageCircle },
-  { href: "/profile", label: "Profile", icon: User },
+  { href: "/",         label: "首页", icon: Home          },
+  { href: "/discover", label: "发现", icon: Compass       },
+  { href: "/messages", label: "消息", icon: MessageCircle },
+  { href: "/profile",  label: "我的", icon: User          },
 ];
 
 export function BottomNav() {
@@ -32,13 +32,9 @@ export function BottomNav() {
             <Icon
               size={22}
               strokeWidth={isActive ? 2.5 : 1.8}
-              className={cn(
-                "transition-transform",
-                isActive && "scale-110"
-              )}
+              className={cn("transition-transform", isActive && "scale-110")}
             />
             <span>{label}</span>
-            {/* Active indicator dot */}
             {isActive && (
               <span className="absolute bottom-1 h-1 w-1 rounded-full bg-primary-600" />
             )}
