@@ -3,10 +3,11 @@
 import { useState, useEffect, useMemo } from "react";
 import {
   Search, LayoutGrid, Star, BookOpen, Rocket,
-  Dumbbell, Heart, Target, Users,
+  Dumbbell, Heart, Target, Users, Sparkles,
 } from "lucide-react";
 import { ClubCard } from "@/components/discover/ClubCard";
 import { ClubDetailModal } from "@/components/discover/ClubDetailModal";
+import { AIRecommendationModal } from "@/components/AIRecommendationModal";
 import { ALL_CLUBS, CATEGORIES, type Category, type Club } from "@/data/clubs";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +30,7 @@ export default function DiscoverPage() {
   const [liked,        setLiked]        = useState<Set<number>>(new Set());
   const [applied,      setApplied]      = useState<Set<number>>(new Set());
   const [selectedClub, setSelectedClub] = useState<Club | null>(null);
+  const [aiOpen,       setAiOpen]       = useState(false);
 
   // Load liked clubs from localStorage on mount
   useEffect(() => {
@@ -83,6 +85,15 @@ export default function DiscoverPage() {
               <p className="mb-2 px-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">
                 社团分类
               </p>
+              {/* ✨ AI Smart Match — pinned above categories */}
+              <button
+                onClick={() => setAiOpen(true)}
+                className="mb-2 flex w-full items-center gap-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 px-3 py-2.5 text-left text-sm font-bold text-white shadow-sm shadow-orange-200 transition-all hover:brightness-110 active:scale-95"
+              >
+                <Sparkles size={15} className="shrink-0" />
+                AI 智能推荐
+              </button>
+
               <nav className="flex flex-col gap-0.5">
                 {CATEGORIES.map((cat) => (
                   <button
@@ -135,6 +146,14 @@ export default function DiscoverPage() {
 
             {/* Mobile category chips */}
             <div className="mb-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
+              {/* AI chip — always first */}
+              <button
+                onClick={() => setAiOpen(true)}
+                className="flex shrink-0 items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm shadow-orange-200 transition-all hover:brightness-110 active:scale-95"
+              >
+                <Sparkles size={12} />
+                AI 智能推荐
+              </button>
               {CATEGORIES.map((cat) => (
                 <button
                   key={cat}
@@ -205,6 +224,9 @@ export default function DiscoverPage() {
           </div>
         </div>
       </div>
+
+      {/* ── AI Recommendation Modal ──────────────────────────────────────── */}
+      {aiOpen && <AIRecommendationModal onClose={() => setAiOpen(false)} />}
 
       {/* ── Club detail modal ─────────────────────────────────────────────── */}
       {selectedClub && (
