@@ -112,9 +112,9 @@ export function ClubCard({ club, isLiked, isApplied, onLike, onApply }: ClubCard
 
       {/* ── Action buttons ────────────────────────────────────────────────── */}
       <div className="mt-4 flex gap-2.5">
-        {/* Primary: 去沟通 */}
+        {/* Primary: 去沟通 — passes club name so messages page can open the right chat */}
         <Link
-          href="/messages"
+          href={`/messages?club=${encodeURIComponent(club.name)}`}
           className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary-600 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-500 active:scale-95"
         >
           <MessageCircle size={14} />
