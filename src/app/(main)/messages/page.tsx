@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Search, Send, ArrowLeft, MoreVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ALL_CLUBS } from "@/data/clubs";
+import { avatarColour } from "@/components/discover/ClubCard";
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  TYPES
@@ -16,8 +18,12 @@ interface Message {
   time: string;
 }
 
+/**
+ * `clubId` is the single unique key — matches Club.id from ALL_CLUBS.
+ * Replaces the old random Date.now() id that caused duplicate key warnings.
+ */
 interface Conversation {
-  id: number;
+  clubId: number;
   clubName: string;
   adminName: string;
   avatarBg: string;
@@ -29,189 +35,155 @@ interface Conversation {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  MOCK DATA
+//  CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-const INITIAL_CONVERSATIONS: Conversation[] = [
+const STORAGE_KEY = "clubmatch_conversations";
+
+// Seed conversations use real Club IDs (7 = 子衿汉服社, 12 = 模联, 14 = 青年创业社)
+const SEED_CONVERSATIONS: Conversation[] = [
   {
-    id: 1,
-    clubName: "街舞社",
-    adminName: "社长 · 陈梓涵",
-    avatarBg: "bg-pink-500",
-    avatarInitial: "舞",
-    lastMessage: "好的，期待你来！现场报名即可 🎉",
-    lastTime: "10:32",
-    unread: 2,
+    clubId: 7,
+    clubName: "子衿汉服社",
+    adminName: "社长 · 林慧",
+    avatarBg: avatarColour(7),
+    avatarInitial: "子",
+    lastMessage: "欢迎加入！本周六有花朝节活动，期待你来 🌸",
+    lastTime: "10:45",
+    unread: 1,
     messages: [
-      {
-        id: 1,
-        from: "club",
-        text: "你好！感谢你对街舞社的关注 🎉 请问你有舞蹈基础吗？",
-        time: "10:15",
-      },
-      {
-        id: 2,
-        from: "user",
-        text: "你好！我没有基础，但很想学 Popping 风格，可以加入吗？",
-        time: "10:18",
-      },
-      {
-        id: 3,
-        from: "club",
-        text: "完全没问题！我们欢迎零基础同学，每周三晚上有公开课可以先体验一下 😊",
-        time: "10:20",
-      },
-      {
-        id: 4,
-        from: "user",
-        text: "太好了！请问本周的宣讲会还有名额吗？",
-        time: "10:29",
-      },
-      {
-        id: 5,
-        from: "club",
-        text: "好的，期待你来！现场报名即可 🎉",
-        time: "10:32",
-      },
+      { id: 1, from: "user", text: "你好！我对汉服文化很感兴趣，请问社团有什么加入要求吗？", time: "10:30" },
+      { id: 2, from: "club", text: "你好！我们完全零基础欢迎，不需要自备汉服，社团有借穿服务 😊 只要热爱传统文化就可以！", time: "10:38" },
+      { id: 3, from: "user", text: "太好了！那活动大概多久一次？", time: "10:41" },
+      { id: 4, from: "club", text: "欢迎加入！本周六有花朝节活动，期待你来 🌸", time: "10:45" },
     ],
   },
   {
-    id: 2,
-    clubName: "AI 与机器学习协会",
-    adminName: "负责人 · 张睿",
-    avatarBg: "bg-indigo-600",
-    avatarInitial: "AI",
-    lastMessage: "下周六上午 10 点读书会，欢迎来旁听",
+    clubId: 12,
+    clubName: "模拟联合国协会",
+    adminName: "主席 · 赵宇翔",
+    avatarBg: avatarColour(12),
+    avatarInitial: "模",
+    lastMessage: "新生不需要经验，我们有专门的培训课程 💪",
     lastTime: "昨天",
     unread: 0,
     messages: [
-      {
-        id: 1,
-        from: "user",
-        text: "你好，请问加入协会需要什么编程基础要求吗？",
-        time: "昨天 14:05",
-      },
-      {
-        id: 2,
-        from: "club",
-        text: "你好！Python 基础即可，我们有配套的入门学习路径，不用担心 💪",
-        time: "昨天 14:40",
-      },
-      {
-        id: 3,
-        from: "user",
-        text: "好的，那大一新生可以参加项目实战吗？",
-        time: "昨天 15:01",
-      },
-      {
-        id: 4,
-        from: "club",
-        text: "下周六上午 10 点读书会，欢迎来旁听",
-        time: "昨天 15:10",
-      },
+      { id: 1, from: "user", text: "你好，请问加入模联需要有参赛经验吗？我是大一新生。", time: "昨天 16:10" },
+      { id: 2, from: "club", text: "新生不需要经验，我们有专门的培训课程 💪", time: "昨天 17:35" },
     ],
   },
   {
-    id: 3,
-    clubName: "辩论社",
-    adminName: "社长 · 林宛宁",
-    avatarBg: "bg-teal-500",
-    avatarInitial: "辩",
-    lastMessage: "欢迎你加入辩论社大家庭！✨",
+    clubId: 14,
+    clubName: "青年创业社",
+    adminName: "社长 · 陈明",
+    avatarBg: avatarColour(14),
+    avatarInitial: "青",
+    lastMessage: "下周四晚 7 点有创业分享会，欢迎来听！",
     lastTime: "周一",
     unread: 0,
     messages: [
-      {
-        id: 1,
-        from: "club",
-        text: "欢迎你加入辩论社大家庭！✨",
-        time: "周一 09:00",
-      },
-      {
-        id: 2,
-        from: "club",
-        text: "请记得本周四晚 7 点来参加新生见面会，地点：图书馆 A104 室 📍",
-        time: "周一 09:01",
-      },
+      { id: 1, from: "club", text: "感谢你对青年创业社的关注 🚀 请问你目前有具体的创业方向吗？", time: "周一 10:00" },
+      { id: 2, from: "user", text: "我还在探索阶段，想了解新媒体创业方向。", time: "周一 10:20" },
+      { id: 3, from: "club", text: "下周四晚 7 点有创业分享会，欢迎来听！", time: "周一 10:25" },
     ],
   },
 ];
 
-// Avatar colour palette for auto-generated conversations
-const AUTO_COLOURS = [
-  "bg-primary-600",
-  "bg-violet-600",
-  "bg-rose-500",
-  "bg-emerald-600",
-  "bg-amber-500",
-  "bg-cyan-600",
-  "bg-fuchsia-600",
-  "bg-orange-500",
-];
-function pickColour(name: string) {
-  let n = 0;
-  for (let i = 0; i < name.length; i++) n += name.charCodeAt(i);
-  return AUTO_COLOURS[n % AUTO_COLOURS.length];
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
-//  MESSAGES CONTENT  (must be separate component so Suspense can wrap it)
+//  MESSAGES CONTENT
 // ─────────────────────────────────────────────────────────────────────────────
 
 function MessagesContent() {
   const searchParams = useSearchParams();
-  const clubParam    = searchParams.get("club");
 
-  const [conversations, setConversations] = useState<Conversation[]>(INITIAL_CONVERSATIONS);
-  const [activeId,      setActiveId]      = useState<number | null>(null);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeClubId,  setActiveClubId]  = useState<number | null>(null);
   const [searchQuery,   setSearchQuery]   = useState("");
   const [inputText,     setInputText]     = useState("");
   const [mobileView,    setMobileView]    = useState<"list" | "chat">("list");
+  const [loaded,        setLoaded]        = useState(false);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef   = useRef<HTMLDivElement>(null);
+  // Track which clubId URL param we've already processed to avoid re-running
+  const processedKeyRef  = useRef<string>("");
 
-  // ── Handle ?club= URL param ────────────────────────────────────────────────
+  // ── 1. Load from localStorage (once on mount) ────────────────────────────
   useEffect(() => {
-    if (!clubParam) {
-      // Default: open first conversation
-      setActiveId(INITIAL_CONVERSATIONS[0]?.id ?? null);
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const convs: Conversation[] = raw ? JSON.parse(raw) : SEED_CONVERSATIONS;
+      if (!raw) localStorage.setItem(STORAGE_KEY, JSON.stringify(SEED_CONVERSATIONS));
+      setConversations(convs);
+    } catch {
+      setConversations(SEED_CONVERSATIONS);
+    }
+    setLoaded(true);
+  }, []);
+
+  // ── 2. Handle ?clubId= URL param ─────────────────────────────────────────
+  useEffect(() => {
+    if (!loaded) return;
+
+    const idStr  = searchParams.get("clubId") ?? "";
+    const key    = idStr || "none";
+    if (processedKeyRef.current === key) return; // already handled
+    processedKeyRef.current = key;
+
+    const clubId = parseInt(idStr, 10);
+
+    if (isNaN(clubId)) {
+      // No clubId param → activate the first conversation
+      setConversations((prev) => {
+        setActiveClubId(prev[0]?.clubId ?? null);
+        return prev; // no structural change — React will bail out
+      });
       return;
     }
 
-    // Try to find existing conversation
-    const existing = INITIAL_CONVERSATIONS.find((c) => c.clubName === clubParam);
-    if (existing) {
-      setActiveId(existing.id);
+    // Has valid clubId → find or create conversation
+    setConversations((prev) => {
+      const existing = prev.find((c) => c.clubId === clubId);
+      if (existing) {
+        setActiveClubId(clubId);
+        setMobileView("chat");
+        if (existing.unread === 0) return prev;
+        return prev.map((c) => (c.clubId === clubId ? { ...c, unread: 0 } : c));
+      }
+      // Create a new conversation for this club
+      const clubData = ALL_CLUBS.find((c) => c.id === clubId);
+      if (!clubData) return prev;
+      const newConv: Conversation = {
+        clubId,
+        clubName: clubData.name,
+        adminName: "负责人",
+        avatarBg: avatarColour(clubId),
+        avatarInitial: clubData.name[0],
+        lastMessage: "发送第一条消息，开始沟通吧 👋",
+        lastTime: "刚刚",
+        unread: 0,
+        messages: [],
+      };
+      setActiveClubId(clubId);
       setMobileView("chat");
-      return;
-    }
+      return [newConv, ...prev];
+    });
+  }, [loaded, searchParams]);
 
-    // Create a new empty conversation for this club
-    const newConv: Conversation = {
-      id: Date.now(),
-      clubName: clubParam,
-      adminName: "负责人",
-      avatarBg: pickColour(clubParam),
-      avatarInitial: clubParam[0],
-      lastMessage: "发送第一条消息，开始沟通吧 👋",
-      lastTime: "刚刚",
-      unread: 0,
-      messages: [],
-    };
-    setConversations((prev) => [newConv, ...prev]);
-    setActiveId(newConv.id);
-    setMobileView("chat");
-  }, [clubParam]);
+  // ── 3. Persist conversations to localStorage ──────────────────────────────
+  useEffect(() => {
+    if (!loaded || conversations.length === 0) return;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations));
+  }, [conversations, loaded]);
 
-  // ── Auto-scroll to latest message ─────────────────────────────────────────
-  const activeConv  = conversations.find((c) => c.id === activeId) ?? null;
-  const msgCount    = activeConv?.messages.length ?? 0;
+  // ── Auto-scroll to latest message ────────────────────────────────────────
+  const activeConv = conversations.find((c) => c.clubId === activeClubId) ?? null;
+  const msgCount   = activeConv?.messages.length ?? 0;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [activeId, msgCount]);
+  }, [activeClubId, msgCount]);
 
-  // ── Filtered conversation list ─────────────────────────────────────────────
+  // ── Filtered conversation list ────────────────────────────────────────────
   const filtered = useMemo(() => {
     const q = searchQuery.trim();
     if (!q) return conversations;
@@ -221,22 +193,23 @@ function MessagesContent() {
   }, [conversations, searchQuery]);
 
   // ── Interactions ──────────────────────────────────────────────────────────
-  const selectConv = (id: number) => {
-    setActiveId(id);
+  const selectConv = (clubId: number) => {
+    setActiveClubId(clubId);
     setMobileView("chat");
     setConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, unread: 0 } : c)),
+      prev.map((c) => (c.clubId === clubId ? { ...c, unread: 0 } : c)),
     );
   };
 
   const sendMessage = () => {
-    if (!inputText.trim() || !activeId) return;
+    if (!inputText.trim() || activeClubId === null) return;
     const now  = new Date();
     const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
+    // message id only needs to be unique within its conversation — Date.now() is fine here
     const msg: Message = { id: Date.now(), from: "user", text: inputText.trim(), time };
     setConversations((prev) =>
       prev.map((c) =>
-        c.id === activeId
+        c.clubId === activeClubId
           ? { ...c, messages: [...c.messages, msg], lastMessage: msg.text, lastTime: time }
           : c,
       ),
@@ -253,7 +226,6 @@ function MessagesContent() {
   // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    // Full height: subtract TopNav (4rem) + BottomNav on mobile (5rem)
     <div className="flex h-[calc(100dvh-9rem)] overflow-hidden md:h-[calc(100dvh-4rem)]">
 
       {/* ════ LEFT: Contact list ════════════════════════════════════════════ */}
@@ -263,7 +235,6 @@ function MessagesContent() {
           mobileView === "chat" && "hidden md:flex",
         )}
       >
-        {/* Panel header */}
         <div className="border-b border-gray-100 px-5 py-4">
           <h2 className="text-base font-bold text-gray-900">消息</h2>
         </div>
@@ -285,27 +256,21 @@ function MessagesContent() {
           </div>
         </div>
 
-        {/* Conversation list */}
+        {/* Conversation list — key uses clubId string to guarantee uniqueness */}
         <div className="flex-1 overflow-y-auto">
           {filtered.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-gray-400">没有找到相关对话</p>
           ) : (
             filtered.map((conv) => (
               <button
-                key={conv.id}
-                onClick={() => selectConv(conv.id)}
+                key={`conv_${conv.clubId}`}
+                onClick={() => selectConv(conv.clubId)}
                 className={cn(
                   "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50",
-                  activeId === conv.id && "border-r-2 border-primary-600 bg-primary-50",
+                  activeClubId === conv.clubId && "border-r-2 border-primary-600 bg-primary-50",
                 )}
               >
-                {/* Avatar */}
-                <div
-                  className={cn(
-                    "relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white",
-                    conv.avatarBg,
-                  )}
-                >
+                <div className={cn("relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white", conv.avatarBg)}>
                   {conv.avatarInitial}
                   {conv.unread > 0 && (
                     <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
@@ -313,13 +278,9 @@ function MessagesContent() {
                     </span>
                   )}
                 </div>
-
-                {/* Text info */}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className="truncate text-sm font-semibold text-gray-900">
-                      {conv.clubName}
-                    </span>
+                    <span className="truncate text-sm font-semibold text-gray-900">{conv.clubName}</span>
                     <span className="shrink-0 text-[11px] text-gray-400">{conv.lastTime}</span>
                   </div>
                   <p className="mt-0.5 truncate text-xs text-gray-500">{conv.lastMessage}</p>
@@ -339,46 +300,31 @@ function MessagesContent() {
       >
         {activeConv ? (
           <>
-            {/* ── Chat header ────────────────────────────────────────────── */}
+            {/* Chat header */}
             <div className="flex shrink-0 items-center gap-3 border-b border-gray-100 bg-white px-5 py-3.5 shadow-sm">
-              {/* Back arrow — mobile only */}
               <button
                 onClick={() => setMobileView("list")}
                 className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 md:hidden"
               >
                 <ArrowLeft size={18} />
               </button>
-
-              {/* Club avatar */}
-              <div
-                className={cn(
-                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white",
-                  activeConv.avatarBg,
-                )}
-              >
+              <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white", activeConv.avatarBg)}>
                 {activeConv.avatarInitial}
               </div>
-
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-gray-900">{activeConv.clubName}</p>
                 <p className="text-xs text-gray-400">{activeConv.adminName}</p>
               </div>
-
               <button className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-400 transition-colors hover:bg-gray-100">
                 <MoreVertical size={17} />
               </button>
             </div>
 
-            {/* ── Message history ────────────────────────────────────────── */}
+            {/* Message history */}
             <div className="flex-1 overflow-y-auto bg-[#f0f2f5] px-4 py-5">
               {activeConv.messages.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
-                  <div
-                    className={cn(
-                      "flex h-14 w-14 items-center justify-center rounded-full text-lg font-bold text-white",
-                      activeConv.avatarBg,
-                    )}
-                  >
+                  <div className={cn("flex h-14 w-14 items-center justify-center rounded-full text-lg font-bold text-white", activeConv.avatarBg)}>
                     {activeConv.avatarInitial}
                   </div>
                   <p className="text-sm font-medium text-gray-600">{activeConv.clubName}</p>
@@ -389,24 +335,13 @@ function MessagesContent() {
                   {activeConv.messages.map((msg) => (
                     <div
                       key={msg.id}
-                      className={cn(
-                        "flex items-end gap-2",
-                        msg.from === "user" ? "flex-row-reverse" : "flex-row",
-                      )}
+                      className={cn("flex items-end gap-2", msg.from === "user" ? "flex-row-reverse" : "flex-row")}
                     >
-                      {/* Club avatar — only on club messages */}
                       {msg.from === "club" && (
-                        <div
-                          className={cn(
-                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white",
-                            activeConv.avatarBg,
-                          )}
-                        >
+                        <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white", activeConv.avatarBg)}>
                           {activeConv.avatarInitial}
                         </div>
                       )}
-
-                      {/* Bubble */}
                       <div
                         className={cn(
                           "max-w-[65%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm",
@@ -417,25 +352,17 @@ function MessagesContent() {
                       >
                         {msg.text}
                       </div>
-
-                      {/* Timestamp */}
-                      <span
-                        className={cn(
-                          "mb-0.5 shrink-0 text-[10px] text-gray-400",
-                          msg.from === "user" ? "mr-0.5" : "ml-0.5",
-                        )}
-                      >
+                      <span className={cn("mb-0.5 shrink-0 text-[10px] text-gray-400", msg.from === "user" ? "mr-0.5" : "ml-0.5")}>
                         {msg.time}
                       </span>
                     </div>
                   ))}
-                  {/* Scroll anchor */}
                   <div ref={messagesEndRef} />
                 </div>
               )}
             </div>
 
-            {/* ── Input area ─────────────────────────────────────────────── */}
+            {/* Input area */}
             <div className="flex shrink-0 items-center gap-2.5 border-t border-gray-100 bg-white px-4 py-3">
               <input
                 type="text"
@@ -461,7 +388,6 @@ function MessagesContent() {
             </div>
           </>
         ) : (
-          /* ── No selection placeholder (desktop only) ─────────────────── */
           <div className="flex flex-1 flex-col items-center justify-center gap-4 bg-[#f0f2f5] text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-sm">
               <Send size={24} className="text-gray-300" />
@@ -478,7 +404,7 @@ function MessagesContent() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  PAGE  (Suspense wrapper required by useSearchParams in App Router)
+//  PAGE  (Suspense boundary required by useSearchParams in App Router)
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function MessagesPage() {

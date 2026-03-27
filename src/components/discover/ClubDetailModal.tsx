@@ -149,7 +149,7 @@ export function ClubDetailModal({
 
           {/* 去沟通 */}
           <Link
-            href={`/messages?club=${encodeURIComponent(club.name)}`}
+            href={`/messages?clubId=${club.id}`}
             onClick={onClose}
             className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-500 active:scale-95"
           >

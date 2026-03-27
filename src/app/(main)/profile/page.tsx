@@ -6,8 +6,11 @@ import {
   Pencil, Sparkles, Heart, Users,
   GraduationCap, BookOpen, Brain,
   FileText, ChevronRight, Star, X, Check,
+  MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ALL_CLUBS, type Club } from "@/data/clubs";
+import { avatarColour, TAG_COLOURS } from "@/components/discover/ClubCard";
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  CONSTANTS
@@ -223,6 +226,9 @@ export default function ProfilePage() {
   const [mbti,   setMbti]   = useState("");
   const [skills, setSkills] = useState(""); // comma-separated
 
+  // ── Liked clubs (from localStorage) ──────────────────────────────────────
+  const [likedClubs, setLikedClubs] = useState<Club[]>([]);
+
   // ── UI state ─────────────────────────────────────────────────────────────
   const [isHydrated, setIsHydrated] = useState(false);
   const [editField,  setEditField]  = useState<EditableField | null>(null);
@@ -237,6 +243,15 @@ export default function ProfilePage() {
     setMajor (profile.major  || "");
     setMbti  (profile.mbti   || "");
     setSkills(profile.skills || "");
+
+    // Load liked clubs
+    try {
+      const raw = localStorage.getItem("clubmatch_liked_clubs");
+      if (raw) {
+        const ids = JSON.parse(raw) as number[];
+        setLikedClubs(ALL_CLUBS.filter((c) => ids.includes(c.id)));
+      }
+    } catch { /* ignore */ }
 
     setIsHydrated(true);
   }, []);
@@ -424,15 +439,67 @@ export default function ProfilePage() {
               <Heart size={16} className="text-rose-500" />
               <h2 className="text-sm font-bold text-gray-800">心动社团</h2>
             </div>
-            <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-semibold text-gray-400">0</span>
+            <span className={cn(
+              "rounded-full px-2.5 py-0.5 text-[11px] font-semibold",
+              likedClubs.length > 0
+                ? "bg-red-50 text-red-500 ring-1 ring-red-100"
+                : "bg-gray-100 text-gray-400",
+            )}>
+              {likedClubs.length}
+            </span>
           </div>
-          <EmptySection
-            icon={Heart}
-            title="还没有收藏的社团"
-            desc="在社团页面点击 ❤️，喜欢的社团会出现在这里"
-            ctaLabel="去发现社团"
-            ctaHref="/discover"
-          />
+
+          {likedClubs.length === 0 ? (
+            <EmptySection
+              icon={Heart}
+              title="还没有收藏的社团"
+              desc="在社团页面点击 ❤️，喜欢的社团会出现在这里"
+              ctaLabel="去发现社团"
+              ctaHref="/discover"
+            />
+          ) : (
+            <div className="space-y-3">
+              {likedClubs.map((club) => (
+                <div
+                  key={club.id}
+                  className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3"
+                >
+                  {/* Avatar */}
+                  <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-base font-bold text-white", avatarColour(club.id))}>
+                    {club.name[0]}
+                  </div>
+
+                  {/* Info */}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-gray-900">{club.name}</p>
+                    <div className="mt-0.5 flex flex-wrap gap-1">
+                      {club.tags.slice(0, 2).map((tag, i) => (
+                        <span key={tag} className={cn("rounded-full px-2 py-0 text-[10px] font-semibold ring-1", TAG_COLOURS[i % TAG_COLOURS.length])}>
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Action */}
+                  <Link
+                    href={`/messages?clubId=${club.id}`}
+                    className="flex shrink-0 items-center gap-1 rounded-xl bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-primary-500"
+                  >
+                    <MessageCircle size={12} />
+                    去沟通
+                  </Link>
+                </div>
+              ))}
+
+              <Link
+                href="/discover"
+                className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-xl border border-primary-200 bg-primary-50 py-2 text-xs font-bold text-primary-600 transition-all hover:bg-primary-100 active:scale-95"
+              >
+                继续发现更多社团 <ChevronRight size={12} />
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* ══════════════════════════════════════════════

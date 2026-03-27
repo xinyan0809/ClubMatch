@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Search, LayoutGrid, Star, BookOpen, Rocket,
   Dumbbell, Heart, Target, Users,
@@ -30,8 +30,21 @@ export default function DiscoverPage() {
   const [applied,      setApplied]      = useState<Set<number>>(new Set());
   const [selectedClub, setSelectedClub] = useState<Club | null>(null);
 
+  // Load liked clubs from localStorage on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("clubmatch_liked_clubs");
+      if (raw) setLiked(new Set(JSON.parse(raw) as number[]));
+    } catch { /* ignore */ }
+  }, []);
+
   const toggleLike = (id: number) =>
-    setLiked((prev) => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+    setLiked((prev) => {
+      const s = new Set(prev);
+      s.has(id) ? s.delete(id) : s.add(id);
+      localStorage.setItem("clubmatch_liked_clubs", JSON.stringify([...s]));
+      return s;
+    });
 
   const handleApply = (id: number) =>
     setApplied((prev) => new Set(prev).add(id));

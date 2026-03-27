@@ -119,7 +119,7 @@ export function ClubCard({ club, isLiked, isApplied, onOpen, onLike, onApply }: 
       >
         {/* Primary: 去沟通 */}
         <Link
-          href={`/messages?club=${encodeURIComponent(club.name)}`}
+          href={`/messages?clubId=${club.id}`}
           className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary-600 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-500 active:scale-95"
         >
           <MessageCircle size={14} />
