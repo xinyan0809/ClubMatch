@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { TopNav } from "@/components/layout/TopNav";
-import { BottomNav } from "@/components/layout/BottomNav";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,26 +32,13 @@ export const viewport: Viewport = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}
       >
-        {/* Desktop: sticky top nav (hidden on mobile) */}
-        <TopNav />
-
-        {/* Main content area
-            - On mobile: add bottom padding so content isn't hidden behind BottomNav
-            - On desktop: full height minus the 64px TopNav */}
-        <main className="min-h-[calc(100dvh-4rem)] pb-20 md:pb-0">
-          {children}
-        </main>
-
-        {/* Mobile: fixed bottom tab bar (hidden on desktop) */}
-        <BottomNav />
+        {children}
       </body>
     </html>
   );
