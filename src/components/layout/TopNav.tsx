@@ -8,8 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 
 const navLinks = [
-  { href: "/",         label: "首页", icon: Home          },
-  { href: "/discover", label: "发现", icon: Compass       },
+  { href: "/home",     label: "首页", icon: Home          },
+  { href: "/discover", label: "社团", icon: Compass       },
   { href: "/messages", label: "消息", icon: MessageCircle },
   { href: "/profile",  label: "我的", icon: User          },
 ];

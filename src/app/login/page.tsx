@@ -178,7 +178,7 @@ export default function LoginPage() {
     await new Promise((r) => setTimeout(r, 900));
     setIsLoading(false);
 
-    router.push(role === "student" ? "/discover" : "/admin");
+    router.push(role === "student" ? "/home" : "/admin");
   };
 
   return (

@@ -6,8 +6,8 @@ import { Home, Compass, MessageCircle, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const tabs = [
-  { href: "/",         label: "首页", icon: Home          },
-  { href: "/discover", label: "发现", icon: Compass       },
+  { href: "/home",     label: "首页", icon: Home          },
+  { href: "/discover", label: "社团", icon: Compass       },
   { href: "/messages", label: "消息", icon: MessageCircle },
   { href: "/profile",  label: "我的", icon: User          },
 ];
