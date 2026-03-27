@@ -1,154 +1,193 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { PartyPopper, RefreshCw } from "lucide-react";
+import {
+  Search, LayoutGrid, Star, BookOpen, Rocket,
+  Dumbbell, Heart, Target, Users,
+} from "lucide-react";
 import { ClubCard } from "@/components/discover/ClubCard";
-import { FilterChips } from "@/components/discover/FilterChips";
-import { SearchBar } from "@/components/discover/SearchBar";
-import { ALL_CLUBS, type Category } from "@/data/clubs";
+import { ALL_CLUBS, CATEGORIES, type Category } from "@/data/clubs";
 import { cn } from "@/lib/utils";
 
+// ── Category icons ────────────────────────────────────────────────────────────
+const CATEGORY_ICONS: Record<Category, React.ReactNode> = {
+  "全部":    <LayoutGrid size={15} />,
+  "思想政治类": <Star      size={15} />,
+  "学术科技类": <BookOpen  size={15} />,
+  "创新创业类": <Rocket    size={15} />,
+  "文化体育类": <Dumbbell  size={15} />,
+  "志愿公益类": <Heart     size={15} />,
+  "自律互助类": <Target    size={15} />,
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function DiscoverPage() {
-  const [query, setQuery]       = useState("");
-  const [category, setCategory] = useState<Category>("All");
-  const [passed, setPassed]     = useState<Set<number>>(new Set());
-  const [applied, setApplied]   = useState<Set<number>>(new Set());
+  const [query,    setQuery]    = useState("");
+  const [category, setCategory] = useState<Category>("全部");
+  const [liked,    setLiked]    = useState<Set<number>>(new Set());
+  const [applied,  setApplied]  = useState<Set<number>>(new Set());
 
-  const handlePass  = (id: number) => setPassed((s)  => new Set(s).add(id));
-  const handleApply = (id: number) => setApplied((s) => new Set(s).add(id));
+  const toggleLike = (id: number) =>
+    setLiked((prev) => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
 
-  const handleReset = () => {
-    setPassed(new Set());
-    setApplied(new Set());
-    setQuery("");
-    setCategory("All");
-  };
+  const handleApply = (id: number) =>
+    setApplied((prev) => new Set(prev).add(id));
 
-  const visibleClubs = useMemo(() => {
-    return ALL_CLUBS.filter((club) => {
-      if (passed.has(club.id) || applied.has(club.id)) return false;
-      if (category !== "All" && category !== "AI Match" && club.category !== category) return false;
-      if (category === "AI Match") return true; // show all, sorted by score
-      if (query.trim()) {
-        const q = query.toLowerCase();
-        return (
-          club.name.toLowerCase().includes(q) ||
-          club.slogan.toLowerCase().includes(q) ||
-          club.tags.some((t) => t.toLowerCase().includes(q))
-        );
-      }
-      return true;
-    }).sort((a, b) =>
-      category === "AI Match" ? b.matchScore - a.matchScore : 0
-    );
-  }, [query, category, passed, applied]);
-
-  const dismissedCount = passed.size + applied.size;
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return ALL_CLUBS.filter((c) => {
+      if (category !== "全部" && c.category !== category) return false;
+      if (!q) return true;
+      return (
+        c.name.toLowerCase().includes(q) ||
+        c.description.toLowerCase().includes(q) ||
+        c.tags.some((t) => t.toLowerCase().includes(q))
+      );
+    });
+  }, [query, category]);
 
   return (
-    /*
-     * Outer wrapper: full-screen height, subtle background
-     * Inner container: capped at max-w-md to simulate a phone app shell
-     */
-    <div className="min-h-screen bg-gradient-to-b from-primary-50/60 to-white">
-      <div className="mx-auto max-w-md px-4 py-6">
+    <div className="min-h-screen bg-[#f9fafb]">
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
 
-        {/* ── Header ──────────────────────────────────────────── */}
-        <header className="mb-5">
-          <div className="flex items-baseline justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Discover Clubs
-              </h1>
-              <p className="mt-0.5 text-sm text-gray-500">
-                {visibleClubs.length} club{visibleClubs.length !== 1 ? "s" : ""} waiting for you
-              </p>
-            </div>
-
-            {dismissedCount > 0 && (
-              <button
-                onClick={handleReset}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-full px-3 py-1.5",
-                  "text-xs font-semibold text-primary-600",
-                  "bg-primary-50 ring-1 ring-primary-200",
-                  "hover:bg-primary-100 transition-colors",
-                  "active:scale-95"
-                )}
-              >
-                <RefreshCw size={12} />
-                Reset ({dismissedCount})
-              </button>
-            )}
-          </div>
-
-          {/* Applied success pills row */}
-          {applied.size > 0 && (
-            <div className="mt-3 flex items-center gap-2 rounded-2xl bg-emerald-50 px-3 py-2 ring-1 ring-emerald-200">
-              <PartyPopper size={14} className="shrink-0 text-emerald-600" />
-              <p className="text-xs font-medium text-emerald-700">
-                You applied to{" "}
-                <strong>{applied.size}</strong>{" "}
-                club{applied.size !== 1 ? "s" : ""}! Check your profile for status.
-              </p>
-            </div>
-          )}
+        {/* ── Page header ───────────────────────────────────────────────── */}
+        <header className="mb-6">
+          <h1 className="text-xl font-bold text-gray-900">社团广场</h1>
+          <p className="mt-0.5 text-sm text-gray-500">
+            发现感兴趣的社团，开启你的大学故事 ✨
+          </p>
         </header>
 
-        {/* ── Search bar ──────────────────────────────────────── */}
-        <div className="mb-3">
-          <SearchBar value={query} onChange={setQuery} />
-        </div>
+        {/* ── Two-column body ───────────────────────────────────────────── */}
+        <div className="flex gap-6">
 
-        {/* ── Filter chips ────────────────────────────────────── */}
-        <div className="mb-5">
-          <FilterChips active={category} onChange={setCategory} />
-        </div>
-
-        {/* ── Club card feed ──────────────────────────────────── */}
-        {visibleClubs.length > 0 ? (
-          <div className="flex flex-col gap-5">
-            {visibleClubs.map((club) => (
-              <ClubCard
-                key={club.id}
-                club={club}
-                onPass={handlePass}
-                onApply={handleApply}
-              />
-            ))}
-          </div>
-        ) : (
-          /* ── Empty state ──────────────────────────────────── */
-          <div className="flex flex-col items-center justify-center gap-4 rounded-3xl bg-white px-6 py-16 text-center shadow-sm ring-1 ring-gray-100">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary-50">
-              <PartyPopper size={28} className="text-primary-500" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-gray-900">
-                You&apos;ve seen them all!
-              </h3>
-              <p className="mt-1 text-sm text-gray-500">
-                {query || category !== "All"
-                  ? "Try adjusting your search or filters."
-                  : "Come back later or reset to explore again."}
+          {/* ════ LEFT: Category sidebar (hidden on mobile) ════ */}
+          <aside className="hidden w-48 shrink-0 lg:block">
+            <div className="sticky top-24 rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
+              <p className="mb-2 px-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                社团分类
               </p>
-            </div>
-            <button
-              onClick={handleReset}
-              className={cn(
-                "mt-1 flex items-center gap-2 rounded-2xl bg-primary-600 px-5 py-2.5",
-                "text-sm font-semibold text-white shadow-md shadow-primary-200",
-                "hover:bg-primary-500 transition-colors active:scale-95"
-              )}
-            >
-              <RefreshCw size={14} />
-              Explore Again
-            </button>
-          </div>
-        )}
+              <nav className="flex flex-col gap-0.5">
+                {CATEGORIES.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setCategory(cat)}
+                    className={cn(
+                      "flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors text-left",
+                      category === cat
+                        ? "bg-primary-50 text-primary-700 font-semibold"
+                        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+                    )}
+                  >
+                    <span className={cn(category === cat ? "text-primary-600" : "text-gray-400")}>
+                      {CATEGORY_ICONS[cat]}
+                    </span>
+                    {cat}
+                  </button>
+                ))}
+              </nav>
 
-        {/* Bottom spacer so last card clears the mobile nav bar */}
-        <div className="h-4" />
+              {/* Liked clubs count */}
+              {liked.size > 0 && (
+                <div className="mt-3 rounded-xl bg-red-50 px-3 py-2.5 ring-1 ring-red-100">
+                  <p className="flex items-center gap-1.5 text-xs font-semibold text-red-500">
+                    <Heart size={12} fill="currentColor" />
+                    心动社团 {liked.size} 个
+                  </p>
+                </div>
+              )}
+            </div>
+          </aside>
+
+          {/* ════ RIGHT: Search + card grid ════ */}
+          <div className="min-w-0 flex-1">
+
+            {/* ── Search bar ─────────────────────────────────────────────── */}
+            <div className="relative mb-5">
+              <Search
+                size={16}
+                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
+              />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="搜索社团名称、标签或描述…"
+                className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-4 text-sm shadow-sm outline-none transition focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
+              />
+            </div>
+
+            {/* Mobile category chips */}
+            <div className="mb-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setCategory(cat)}
+                  className={cn(
+                    "flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
+                    category === cat
+                      ? "bg-primary-600 text-white"
+                      : "bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50",
+                  )}
+                >
+                  {CATEGORY_ICONS[cat]}
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            {/* ── Results meta ───────────────────────────────────────────── */}
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-sm text-gray-500">
+                找到
+                <span className="mx-1 font-semibold text-gray-900">{filtered.length}</span>
+                个社团
+                {category !== "全部" && (
+                  <span className="ml-1 text-gray-400">· {category}</span>
+                )}
+              </p>
+              {applied.size > 0 && (
+                <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-600 ring-1 ring-emerald-200">
+                  <Users size={11} />
+                  已报名 {applied.size} 个
+                </span>
+              )}
+            </div>
+
+            {/* ── Club grid ──────────────────────────────────────────────── */}
+            {filtered.length > 0 ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {filtered.map((club) => (
+                  <ClubCard
+                    key={club.id}
+                    club={club}
+                    isLiked={liked.has(club.id)}
+                    isApplied={applied.has(club.id)}
+                    onLike={() => toggleLike(club.id)}
+                    onApply={() => handleApply(club.id)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-3 rounded-2xl bg-white px-6 py-16 text-center shadow-sm ring-1 ring-gray-100">
+                <Search size={32} className="text-gray-200" />
+                <div>
+                  <p className="font-semibold text-gray-700">没有找到相关社团</p>
+                  <p className="mt-1 text-sm text-gray-400">
+                    试试调整分类或修改搜索关键词
+                  </p>
+                </div>
+                <button
+                  onClick={() => { setQuery(""); setCategory("全部"); }}
+                  className="mt-1 rounded-xl bg-primary-600 px-5 py-2 text-sm font-semibold text-white hover:bg-primary-500 active:scale-95 transition-all"
+                >
+                  重置筛选
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

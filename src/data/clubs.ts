@@ -1,101 +1,146 @@
-export type Club = {
-  id: number;
-  name: string;
-  slogan: string;
-  matchScore: number;
-  /** picsum.photos seed — gives a stable, deterministic image */
-  imageSeed: string;
-  /** Tailwind gradient used as a fallback color tint overlay */
-  gradientFrom: string;
-  gradientTo: string;
-  tags: [string, string, string];
-  category: Category;
-  members: number;
-};
+// ─────────────────────────────────────────────────────────────────────────────
+//  CLUB DATA  — Chinese university club categories (中国传媒大学 beta)
+// ─────────────────────────────────────────────────────────────────────────────
 
-export type Category = "All" | "AI Match" | "Sports" | "Arts" | "Tech" | "Music" | "Business";
+export type Category =
+  | "全部"
+  | "思想政治类"
+  | "学术科技类"
+  | "创新创业类"
+  | "文化体育类"
+  | "志愿公益类"
+  | "自律互助类";
 
 export const CATEGORIES: Category[] = [
-  "All",
-  "AI Match",
-  "Sports",
-  "Arts",
-  "Tech",
-  "Music",
-  "Business",
+  "全部",
+  "思想政治类",
+  "学术科技类",
+  "创新创业类",
+  "文化体育类",
+  "志愿公益类",
+  "自律互助类",
 ];
 
+export interface Club {
+  id: number;
+  name: string;
+  description: string;
+  tags: string[];
+  category: Exclude<Category, "全部">;
+  members: number;
+  recruiting: boolean;
+}
+
 export const ALL_CLUBS: Club[] = [
+  // ── 思想政治类 ────────────────────────────────────────────────────────────
   {
     id: 1,
-    name: "AI & Machine Learning Society",
-    slogan: "Build the future, one model at a time.",
-    matchScore: 95,
-    imageSeed: "artificial-intelligence",
-    gradientFrom: "#1e1b4b",
-    gradientTo: "#312e81",
-    tags: ["Beginner OK", "Weekend Activities", "Project-Based"],
-    category: "Tech",
-    members: 312,
+    name: "马克思主义学习社",
+    description:
+      "通过周期性读书会、专题讲座与院校联合研讨，深入理解马克思主义理论，培养正确的世界观与方法论。欢迎对思政理论感兴趣的同学加入。",
+    tags: ["思想政治类", "读书会", "讲座交流"],
+    category: "思想政治类",
+    members: 210,
+    recruiting: true,
   },
+
+  // ── 学术科技类 ────────────────────────────────────────────────────────────
   {
     id: 2,
-    name: "Street Football League",
-    slogan: "No pitch? No problem. Just show up.",
-    matchScore: 88,
-    imageSeed: "football-sport",
-    gradientFrom: "#14532d",
-    gradientTo: "#166534",
-    tags: ["Extrovert Friendly", "All Levels", "Weekly Meetups"],
-    category: "Sports",
-    members: 540,
+    name: "AI 与机器学习协会",
+    description:
+      "聚焦前沿 AI 技术，定期举办论文研读、项目实战与竞赛培训。无论你是零基础还是已有经验，这里都有适合你的成长路径。",
+    tags: ["学术科技类", "项目实战", "零基础可报"],
+    category: "学术科技类",
+    members: 312,
+    recruiting: true,
   },
   {
     id: 3,
-    name: "Digital Arts Collective",
-    slogan: "Where pixels meet purpose.",
-    matchScore: 82,
-    imageSeed: "digital-art-design",
-    gradientFrom: "#4a044e",
-    gradientTo: "#701a75",
-    tags: ["Creative Space", "Portfolio Help", "Introvert OK"],
-    category: "Arts",
-    members: 187,
+    name: "机器人与硬件实验室",
+    description:
+      "动手搭建机器人系统，参与全国大学生机器人大赛。在实践中掌握嵌入式开发与自动控制技术，欢迎对硬件感兴趣的你。",
+    tags: ["学术科技类", "竞赛备战", "硬件动手"],
+    category: "学术科技类",
+    members: 176,
+    recruiting: true,
   },
   {
     id: 4,
-    name: "Founders & Builders Club",
-    slogan: "Ship fast, learn faster.",
-    matchScore: 79,
-    imageSeed: "startup-business",
-    gradientFrom: "#431407",
-    gradientTo: "#9a3412",
-    tags: ["Networking", "Pitch Nights", "Mentorship"],
-    category: "Business",
-    members: 228,
+    name: "数字媒体技术研究会",
+    description:
+      "专注音视频编解码、实时渲染与 XR 技术研究，结合传媒大学特色，探索技术与内容生产的深度融合。",
+    tags: ["学术科技类", "音视频技术", "XR/虚拟现实"],
+    category: "学术科技类",
+    members: 134,
+    recruiting: true,
   },
+
+  // ── 创新创业类 ────────────────────────────────────────────────────────────
   {
     id: 5,
-    name: "Campus Jazz Ensemble",
-    slogan: "Every note tells a story. What's yours?",
-    matchScore: 74,
-    imageSeed: "jazz-music-band",
-    gradientFrom: "#1c1917",
-    gradientTo: "#44403c",
-    tags: ["Beginners Welcome", "Live Performances", "Fun Vibes"],
-    category: "Music",
-    members: 95,
+    name: "创业者联盟",
+    description:
+      "汇聚有创业想法的同学，定期举办 Pitch Night、投资人见面会与创业政策解读，把创意变成真正的产品。",
+    tags: ["创新创业类", "路演活动", "导师资源"],
+    category: "创新创业类",
+    members: 228,
+    recruiting: true,
   },
   {
     id: 6,
-    name: "Robotics & Hardware Lab",
-    slogan: "Break things. Build better things.",
-    matchScore: 91,
-    imageSeed: "robotics-engineering",
-    gradientFrom: "#0c4a6e",
-    gradientTo: "#075985",
-    tags: ["Hands-On", "Team Projects", "Competitions"],
-    category: "Tech",
-    members: 176,
+    name: "新媒体创作工作室",
+    description:
+      "专注短视频、公众号与品牌内容创作，提供完整的选题—拍摄—剪辑—运营全链路实战机会，打造你的个人媒体品牌。",
+    tags: ["创新创业类", "短视频制作", "内容运营"],
+    category: "创新创业类",
+    members: 145,
+    recruiting: true,
+  },
+
+  // ── 文化体育类 ────────────────────────────────────────────────────────────
+  {
+    id: 7,
+    name: "街舞社",
+    description:
+      "涵盖 Breaking、Popping、Urban 等多种风格，零基础即可报名。每周公开课免费体验，年末联合高校巡演等你来。",
+    tags: ["文化体育类", "零基础", "每周公开课"],
+    category: "文化体育类",
+    members: 387,
+    recruiting: true,
+  },
+  {
+    id: 8,
+    name: "辩论社",
+    description:
+      "培养逻辑思维与公众表达能力，代表学校参与全国高校辩论赛。欢迎口才好，或想系统锻炼表达能力的同学加入。",
+    tags: ["文化体育类", "全国赛事", "逻辑思维"],
+    category: "文化体育类",
+    members: 163,
+    recruiting: true,
+  },
+
+  // ── 志愿公益类 ────────────────────────────────────────────────────────────
+  {
+    id: 9,
+    name: "爱心支教团",
+    description:
+      "寒暑假组队赴山区学校开展义务支教，以知识与陪伴点亮乡村孩子的求学之路。有教育热情的你，快来加入我们。",
+    tags: ["志愿公益类", "支教助学", "社会责任"],
+    category: "志愿公益类",
+    members: 94,
+    recruiting: true,
+  },
+
+  // ── 自律互助类 ────────────────────────────────────────────────────────────
+  {
+    id: 10,
+    name: "晨跑打卡俱乐部",
+    description:
+      "每日 6:30 绕校园集合晨跑，用运动习惯开启充实的一天。成员互相监督打卡，坚持 30 天解锁专属徽章。",
+    tags: ["自律互助类", "运动打卡", "早起习惯"],
+    category: "自律互助类",
+    members: 520,
+    recruiting: true,
   },
 ];

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Heart, MessageCircle, Share2, MoreHorizontal,
-  Circle, ChevronRight,
+  Circle, CheckCircle2, ChevronRight,
   CalendarClock, Inbox,
   Megaphone, HelpCircle, Newspaper,
   Sparkles, CalendarX,
@@ -161,35 +161,68 @@ function PostCard({ post, liked, onLike }: {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ProfileWidget() {
-  // New user: 0 steps completed → 0%
-  const steps = [
+  const [steps, setSteps] = useState([
     { label: "基本信息",  done: false },
     { label: "技能标签",  done: false },
     { label: "MBTI 测试", done: false },
     { label: "自我介绍",  done: false },
     { label: "上传头像",  done: false },
-  ];
+  ]);
+
+  // Calculate completion from localStorage after mount
+  useEffect(() => {
+    const name    = localStorage.getItem("cm_userName")?.trim() ?? "";
+    const profile = JSON.parse(localStorage.getItem("cm_userProfile") ?? "{}") as {
+      major?: string; mbti?: string; skills?: string; bio?: string; avatar?: string;
+    };
+    setSteps([
+      { label: "基本信息",  done: name.length > 0 },
+      { label: "技能标签",  done: (profile.skills ?? "").trim().length > 0 },
+      { label: "MBTI 测试", done: (profile.mbti   ?? "").trim().length > 0 },
+      { label: "自我介绍",  done: (profile.bio    ?? "").trim().length > 0 },
+      { label: "上传头像",  done: (profile.avatar ?? "").trim().length > 0 },
+    ]);
+  }, []);
+
+  const doneCount  = steps.filter((s) => s.done).length;
+  const pct        = Math.round((doneCount / steps.length) * 100);
+  const allDone    = doneCount === steps.length;
 
   return (
     <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold text-gray-900">完善个人名片</h3>
-        <span className="text-xs font-bold text-gray-400">0%</span>
+        <span className={cn("text-xs font-bold", pct === 100 ? "text-emerald-500" : "text-gray-400")}>
+          {pct}%
+        </span>
       </div>
 
-      {/* Progress bar — empty */}
+      {/* Progress bar */}
       <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-gray-100">
-        <div className="h-full w-0 rounded-full bg-gradient-to-r from-primary-500 to-violet-500 transition-all duration-700" />
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-primary-500 to-violet-500 transition-all duration-700"
+          style={{ width: `${pct}%` }}
+        />
       </div>
-      <p className="mt-1.5 text-[11px] text-gray-400">完善 5 项后解锁「优质候选人」徽章 🏅</p>
+      <p className="mt-1.5 text-[11px] text-gray-400">
+        {allDone ? "🏅 已解锁「优质候选人」徽章！" : `还差 ${steps.length - doneCount} 项解锁「优质候选人」徽章 🏅`}
+      </p>
 
       {/* Step checklist */}
       <ul className="mt-4 space-y-2">
-        {steps.map(({ label }) => (
+        {steps.map(({ label, done }) => (
           <li key={label} className="flex items-center gap-2.5 text-xs">
-            <Circle size={14} className="shrink-0 text-gray-300" />
-            <span className="font-medium text-gray-700">{label}</span>
-            <span className="ml-auto rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600 ring-1 ring-amber-200">待完善</span>
+            {done
+              ? <CheckCircle2 size={14} className="shrink-0 text-emerald-500" />
+              : <Circle       size={14} className="shrink-0 text-gray-300" />
+            }
+            <span className={cn("font-medium", done ? "text-gray-500 line-through" : "text-gray-700")}>
+              {label}
+            </span>
+            {done
+              ? <span className="ml-auto rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600 ring-1 ring-emerald-200">已完成</span>
+              : <span className="ml-auto rounded-full bg-amber-50  px-1.5 py-0.5 text-[10px] font-semibold text-amber-600  ring-1 ring-amber-200">待完善</span>
+            }
           </li>
         ))}
       </ul>
