@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.625rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    /* Smooth scrolling everywhere */
+    scroll-behavior: smooth;
+    /* Prevent iOS tap highlight */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-background text-gray-900 antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Remove focus outline on mouse click, keep for keyboard */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+}
+
+@layer utilities {
+  /* Safe area insets for phones with home bar / notch */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+}
