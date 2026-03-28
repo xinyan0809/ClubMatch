@@ -12,23 +12,21 @@ import { avatarColour } from "@/components/discover/ClubCard";
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface Message {
-  id: number;
-  from: "user" | "club";
+  id: string;
+  senderType: "student" | "admin";
   text: string;
   time: string;
 }
 
 /**
- * `id` is the single unique key (standard naming).
- * Club conversations:  id = "club_7", "club_12", etc.
- * Peer conversations:  id = "peer_<authorId>"
+ * A conversation is between ONE student and ONE club.
+ * studentName === "" means seed data visible to any logged-in student.
  */
 interface Conversation {
   id: string;
   clubName: string;
-  adminName: string;
+  studentName: string;
   avatarBg: string;
-  avatarInitial: string;
   lastMessage: string;
   lastTime: string;
   unread: number;
@@ -44,80 +42,125 @@ const AVATAR_COLORS = [
   "bg-amber-500",  "bg-indigo-500", "bg-teal-500",  "bg-pink-500",
 ];
 
-/** Deterministic color from any string — used for peer avatars. */
 function hashColor(s: string): string {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }
 
-/** Returns true if every item in the array has a non-empty string `id`. */
-function isValidConversationArray(arr: unknown): arr is Conversation[] {
+/** Rejects any old-format data that lacks the new required fields. */
+function isValid(arr: unknown): arr is Conversation[] {
   return (
     Array.isArray(arr) &&
     arr.every(
       (item) =>
         item !== null &&
         typeof item === "object" &&
-        typeof (item as Record<string, unknown>).id === "string" &&
-        ((item as Record<string, unknown>).id as string).length > 0,
+        typeof (item as Record<string, unknown>).id          === "string" &&
+        ((item as Record<string, unknown>).id as string).length > 0 &&
+        typeof (item as Record<string, unknown>).clubName    === "string" &&
+        typeof (item as Record<string, unknown>).studentName === "string",
     )
   );
 }
 
+/** Filter conversations visible to the current user. */
+function visibleFor(
+  convs: Conversation[],
+  role: "student" | "admin",
+  userName: string,
+  adminClubName: string,
+): Conversation[] {
+  if (role === "admin") {
+    return convs.filter((c) => c.clubName === adminClubName);
+  }
+  // Students see convs that belong to them, or seed rows (studentName === "")
+  return convs.filter(
+    (c) => c.studentName === "" || c.studentName === userName,
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
-//  CONSTANTS
+//  SEED DATA  (studentName = "" → any student can see these)
 // ─────────────────────────────────────────────────────────────────────────────
 
 const STORAGE_KEY = "clubmatch_conversations";
 
 const SEED_CONVERSATIONS: Conversation[] = [
   {
-    id: "club_7",
+    id: "seed_club_7",
     clubName: "子衿汉服社",
-    adminName: "社长 · 林慧",
+    studentName: "",
     avatarBg: avatarColour(7),
-    avatarInitial: "子",
     lastMessage: "欢迎加入！本周六有花朝节活动，期待你来 🌸",
     lastTime: "10:45",
     unread: 1,
     messages: [
-      { id: 1, from: "user", text: "你好！我对汉服文化很感兴趣，请问社团有什么加入要求吗？", time: "10:30" },
-      { id: 2, from: "club", text: "你好！我们完全零基础欢迎，不需要自备汉服，社团有借穿服务 😊 只要热爱传统文化就可以！", time: "10:38" },
-      { id: 3, from: "user", text: "太好了！那活动大概多久一次？", time: "10:41" },
-      { id: 4, from: "club", text: "欢迎加入！本周六有花朝节活动，期待你来 🌸", time: "10:45" },
+      { id: "s7m1", senderType: "student", text: "你好！我对汉服文化很感兴趣，请问社团有什么加入要求吗？",                           time: "10:30" },
+      { id: "s7m2", senderType: "admin",   text: "你好！我们完全零基础欢迎，不需要自备汉服，社团有借穿服务 😊 只要热爱传统文化就可以！", time: "10:38" },
+      { id: "s7m3", senderType: "student", text: "太好了！那活动大概多久一次？",                                               time: "10:41" },
+      { id: "s7m4", senderType: "admin",   text: "欢迎加入！本周六有花朝节活动，期待你来 🌸",                                    time: "10:45" },
     ],
   },
   {
-    id: "club_12",
+    id: "seed_club_12",
     clubName: "模拟联合国协会",
-    adminName: "主席 · 赵宇翔",
+    studentName: "",
     avatarBg: avatarColour(12),
-    avatarInitial: "模",
     lastMessage: "新生不需要经验，我们有专门的培训课程 💪",
     lastTime: "昨天",
     unread: 0,
     messages: [
-      { id: 1, from: "user", text: "你好，请问加入模联需要有参赛经验吗？我是大一新生。", time: "昨天 16:10" },
-      { id: 2, from: "club", text: "新生不需要经验，我们有专门的培训课程 💪", time: "昨天 17:35" },
+      { id: "s12m1", senderType: "student", text: "你好，请问加入模联需要有参赛经验吗？我是大一新生。", time: "昨天 16:10" },
+      { id: "s12m2", senderType: "admin",   text: "新生不需要经验，我们有专门的培训课程 💪",          time: "昨天 17:35" },
     ],
   },
   {
-    id: "club_14",
+    id: "seed_club_14",
     clubName: "青年创业社",
-    adminName: "社长 · 陈明",
+    studentName: "",
     avatarBg: avatarColour(14),
-    avatarInitial: "青",
     lastMessage: "下周四晚 7 点有创业分享会，欢迎来听！",
     lastTime: "周一",
     unread: 0,
     messages: [
-      { id: 1, from: "club", text: "感谢你对青年创业社的关注 🚀 请问你目前有具体的创业方向吗？", time: "周一 10:00" },
-      { id: 2, from: "user", text: "我还在探索阶段，想了解新媒体创业方向。", time: "周一 10:20" },
-      { id: 3, from: "club", text: "下周四晚 7 点有创业分享会，欢迎来听！", time: "周一 10:25" },
+      { id: "s14m1", senderType: "admin",   text: "感谢你对青年创业社的关注 🚀 请问你目前有具体的创业方向吗？", time: "周一 10:00" },
+      { id: "s14m2", senderType: "student", text: "我还在探索阶段，想了解新媒体创业方向。",                   time: "周一 10:20" },
+      { id: "s14m3", senderType: "admin",   text: "下周四晚 7 点有创业分享会，欢迎来听！",                    time: "周一 10:25" },
     ],
   },
 ];
+
+/** Generate 2 mock student→club conversations for a newly-logged-in admin. */
+function adminMockConversations(clubName: string): Conversation[] {
+  return [
+    {
+      id: `admin_mock_${clubName}_1`,
+      clubName,
+      studentName: "Mock - 李明",
+      avatarBg: hashColor("Mock - 李明"),
+      lastMessage: "社长你好，请问面试需要准备什么？",
+      lastTime: "今天",
+      unread: 1,
+      messages: [
+        { id: "am1m1", senderType: "student", text: "社长你好，请问面试需要准备什么？", time: "09:30" },
+      ],
+    },
+    {
+      id: `admin_mock_${clubName}_2`,
+      clubName,
+      studentName: "Mock - 王思",
+      avatarBg: hashColor("Mock - 王思"),
+      lastMessage: "我对贵社团非常感兴趣，能否介绍一下日常活动频率？",
+      lastTime: "昨天",
+      unread: 0,
+      messages: [
+        { id: "am2m1", senderType: "student", text: "我对贵社团非常感兴趣，能否介绍一下日常活动频率？",     time: "昨天 16:00" },
+        { id: "am2m2", senderType: "admin",   text: "你好！我们每周有 1-2 次活动，欢迎你来了解详情 😊",  time: "昨天 17:00" },
+      ],
+    },
+  ];
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  MESSAGES CONTENT
@@ -132,38 +175,56 @@ function MessagesContent() {
   const [inputText,     setInputText]     = useState("");
   const [mobileView,    setMobileView]    = useState<"list" | "chat">("list");
   const [loaded,        setLoaded]        = useState(false);
-  const [adminClubName, setAdminClubName] = useState<string | null>(null);
+
+  // Immutable identity — set once on mount, never changes mid-session
+  const [userRole,      setUserRole]      = useState<"student" | "admin">("student");
+  const [userName,      setUserName]      = useState("");
+  const [adminClubName, setAdminClubName] = useState("");
 
   const messagesEndRef  = useRef<HTMLDivElement>(null);
   const processedKeyRef = useRef<string>("");
 
-  // ── 1. Load from localStorage (once on mount) ────────────────────────────
-  //      If stored data is dirty (missing valid `id` fields), nuke and reseed.
+  // ── 1. Load identity + conversations ─────────────────────────────────────
   useEffect(() => {
-    // Read admin identity
-    if (localStorage.getItem("cm_userRole") === "admin") {
-      setAdminClubName(localStorage.getItem("cm_adminClubName") || null);
-    }
+    const role      = (localStorage.getItem("cm_userRole") || "student") as "student" | "admin";
+    const uName     = localStorage.getItem("cm_userName")?.trim() || "";
+    const clubName  = localStorage.getItem("cm_adminClubName") || "";
 
+    setUserRole(role);
+    setUserName(uName);
+    setAdminClubName(clubName);
+
+    // Load + validate conversations
+    let convs: Conversation[];
     try {
       const raw    = localStorage.getItem(STORAGE_KEY);
       const parsed = raw ? JSON.parse(raw) : null;
-
-      if (isValidConversationArray(parsed)) {
-        setConversations(parsed);
+      if (isValid(parsed)) {
+        convs = parsed;
       } else {
-        // Dirty / stale / legacy data — clear and start fresh
+        convs = SEED_CONVERSATIONS;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(SEED_CONVERSATIONS));
-        setConversations(SEED_CONVERSATIONS);
       }
     } catch {
+      convs = SEED_CONVERSATIONS;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(SEED_CONVERSATIONS));
-      setConversations(SEED_CONVERSATIONS);
     }
+
+    // Admin: inject mock conversations if their club has none
+    if (role === "admin" && clubName) {
+      const hasMine = convs.some((c) => c.clubName === clubName);
+      if (!hasMine) {
+        const mocks = adminMockConversations(clubName);
+        convs = [...mocks, ...convs];
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(convs));
+      }
+    }
+
+    setConversations(convs);
     setLoaded(true);
   }, []);
 
-  // ── 2. Handle URL params: ?clubId= (legacy) or ?targetId= + ?targetName= ─
+  // ── 2. Handle URL params ─────────────────────────────────────────────────
   useEffect(() => {
     if (!loaded) return;
 
@@ -171,82 +232,92 @@ function MessagesContent() {
     const targetId   = searchParams.get("targetId")   ?? "";
     const targetName = searchParams.get("targetName") ?? "";
 
-    // Stable key for dedup guard
-    const key = clubIdStr ? `club_${clubIdStr}` : targetId ? `peer_${targetId}` : "none";
+    const key = clubIdStr  ? `clubid_${clubIdStr}`
+              : targetId   ? `target_${targetId}`
+              : "none";
     if (processedKeyRef.current === key) return;
     processedKeyRef.current = key;
 
-    // ── Case A: ?targetId= — peer conversation ────────────────────────────
-    if (targetId) {
-      const convId = `peer_${targetId}`;
+    if (key === "none") {
+      // No param → open first visible conversation
       setConversations((prev) => {
-        const existing = prev.find((c) => c.id === convId);
-        if (existing) {
-          setActiveId(convId);
-          setMobileView("chat");
-          if (existing.unread === 0) return prev;
-          return prev.map((c) => (c.id === convId ? { ...c, unread: 0 } : c));
-        }
-        // Create ONE new peer conversation — id is deterministic so re-routing
-        // to the same person never duplicates.
-        const displayName = targetName || targetId;
-        const newConv: Conversation = {
-          id: convId,
-          clubName: displayName,
-          adminName: "",
-          avatarBg: hashColor(targetId),
-          avatarInitial: displayName[0] ?? "?",
-          lastMessage: "发送第一条消息，开始沟通吧 👋",
-          lastTime: "刚刚",
-          unread: 0,
-          messages: [],
-        };
-        setActiveId(convId);
-        setMobileView("chat");
-        return [newConv, ...prev];
-      });
-      return;
-    }
-
-    // ── Case B: ?clubId= — club conversation ─────────────────────────────
-    const clubId = parseInt(clubIdStr, 10);
-    if (isNaN(clubId)) {
-      setConversations((prev) => {
-        setActiveId(prev[0]?.id ?? null);
+        const vis = visibleFor(prev, userRole, userName, adminClubName);
+        setActiveId(vis[0]?.id ?? null);
         return prev;
       });
       return;
     }
 
-    const convId = `club_${clubId}`;
+    // Resolve which club + student this conversation belongs to
+    let targetClubName    = "";
+    let targetStudentName = "";
+
+    if (clubIdStr) {
+      // From /discover "去沟通" button — always a student contacting a club
+      const clubId   = parseInt(clubIdStr, 10);
+      const clubData = ALL_CLUBS.find((c) => c.id === clubId);
+      if (!clubData) return;
+      targetClubName    = clubData.name;
+      targetStudentName = userName || "";
+    } else if (targetId) {
+      // From home feed avatar click
+      if (userRole === "admin") {
+        // Admin replies to a student who posted in the feed
+        targetClubName    = adminClubName;
+        targetStudentName = targetName || targetId;
+      } else {
+        // Student contacts a club (targetId = "org_xxx", targetName = club name)
+        targetClubName    = targetName || targetId;
+        targetStudentName = userName || "";
+      }
+    }
+
+    if (!targetClubName) return;
+
+    // Deterministic id — prevents duplicates on repeated routing
+    const safeClub    = targetClubName.replace(/\s/g, "_");
+    const safeStudent = (targetStudentName || "anon").replace(/\s/g, "_");
+    const convId      = `conv_${safeClub}_${safeStudent}`;
+
     setConversations((prev) => {
-      const existing = prev.find((c) => c.id === convId);
+      // Find by exact id or by matching clubName+studentName
+      const existing = prev.find(
+        (c) =>
+          c.id === convId ||
+          (c.clubName === targetClubName &&
+            (c.studentName === targetStudentName ||
+              (targetStudentName === "" && c.studentName === ""))),
+      );
       if (existing) {
-        setActiveId(convId);
+        setActiveId(existing.id);
         setMobileView("chat");
         if (existing.unread === 0) return prev;
-        return prev.map((c) => (c.id === convId ? { ...c, unread: 0 } : c));
+        return prev.map((c) => (c.id === existing.id ? { ...c, unread: 0 } : c));
       }
-      const clubData = ALL_CLUBS.find((c) => c.id === clubId);
-      if (!clubData) return prev;
+
+      // Create new conversation
+      const clubData = ALL_CLUBS.find((c) => c.name === targetClubName);
+      const bg = userRole === "admin"
+        ? hashColor(targetStudentName)
+        : clubData ? avatarColour(clubData.id) : hashColor(targetClubName);
+
       const newConv: Conversation = {
         id: convId,
-        clubName: clubData.name,
-        adminName: "负责人",
-        avatarBg: avatarColour(clubId),
-        avatarInitial: clubData.name[0],
+        clubName:    targetClubName,
+        studentName: targetStudentName,
+        avatarBg:    bg,
         lastMessage: "发送第一条消息，开始沟通吧 👋",
-        lastTime: "刚刚",
-        unread: 0,
-        messages: [],
+        lastTime:    "刚刚",
+        unread:      0,
+        messages:    [],
       };
       setActiveId(convId);
       setMobileView("chat");
       return [newConv, ...prev];
     });
-  }, [loaded, searchParams]);
+  }, [loaded, searchParams, userRole, userName, adminClubName]);
 
-  // ── 3. Persist conversations to localStorage ──────────────────────────────
+  // ── 3. Persist ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!loaded || conversations.length === 0) return;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations));
@@ -261,13 +332,37 @@ function MessagesContent() {
   }, [activeId, msgCount]);
 
   // ── Filtered list ─────────────────────────────────────────────────────────
+  const visible = useMemo(
+    () => visibleFor(conversations, userRole, userName, adminClubName),
+    [conversations, userRole, userName, adminClubName],
+  );
+
   const filtered = useMemo(() => {
     const q = searchQuery.trim();
-    if (!q) return conversations;
-    return conversations.filter(
-      (c) => c.clubName.includes(q) || c.lastMessage.includes(q),
+    if (!q) return visible;
+    return visible.filter(
+      (c) =>
+        c.clubName.includes(q) ||
+        c.studentName.includes(q) ||
+        c.lastMessage.includes(q),
     );
-  }, [conversations, searchQuery]);
+  }, [visible, searchQuery]);
+
+  // ── Per-role display helpers ──────────────────────────────────────────────
+
+  /** Text shown in the conversation list item */
+  const listLabel  = (c: Conversation) => userRole === "admin" ? c.studentName : c.clubName;
+  /** Initial letter for the avatar circle */
+  const listInitial = (c: Conversation) => (userRole === "admin" ? c.studentName : c.clubName)[0] ?? "?";
+  /** Title in the chat window header */
+  const headerTitle = (c: Conversation) => userRole === "admin" ? c.studentName : c.clubName;
+  /** Subtitle in the chat window header */
+  const headerSub   = (c: Conversation) =>
+    userRole === "admin" ? `申请人 · ${c.clubName}` : "社团官方";
+
+  /** Is this message one I sent (outgoing = blue right)? */
+  const isOutgoing = (msg: Message) =>
+    userRole === "admin" ? msg.senderType === "admin" : msg.senderType === "student";
 
   // ── Interactions ──────────────────────────────────────────────────────────
   const selectConv = (id: string) => {
@@ -279,10 +374,15 @@ function MessagesContent() {
   };
 
   const sendMessage = () => {
-    if (!inputText.trim() || activeId === null) return;
+    if (!inputText.trim() || !activeId) return;
     const now  = new Date();
     const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
-    const msg: Message = { id: Date.now(), from: "user", text: inputText.trim(), time };
+    const msg: Message = {
+      id:         Date.now().toString(),
+      senderType: userRole === "admin" ? "admin" : "student",
+      text:       inputText.trim(),
+      time,
+    };
     setConversations((prev) =>
       prev.map((c) =>
         c.id === activeId
@@ -313,15 +413,17 @@ function MessagesContent() {
       >
         <div className="border-b border-gray-100 px-5 py-4">
           <h2 className="text-base font-bold text-gray-900">消息</h2>
+          {userRole === "admin" && adminClubName && (
+            <p className="mt-0.5 text-[11px] font-semibold text-amber-600">
+              {adminClubName} · 收到的消息
+            </p>
+          )}
         </div>
 
         {/* Search */}
         <div className="px-3 py-2.5">
           <div className="relative">
-            <Search
-              size={13}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-            />
+            <Search size={13} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               placeholder="搜索对话"
@@ -332,7 +434,7 @@ function MessagesContent() {
           </div>
         </div>
 
-        {/* Conversation list — fallback key prevents crash if data is partially corrupt */}
+        {/* List */}
         <div className="flex-1 overflow-y-auto">
           {filtered.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-gray-400">没有找到相关对话</p>
@@ -347,7 +449,7 @@ function MessagesContent() {
                 )}
               >
                 <div className={cn("relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white", conv.avatarBg)}>
-                  {conv.avatarInitial}
+                  {listInitial(conv)}
                   {conv.unread > 0 && (
                     <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
                       {conv.unread}
@@ -356,7 +458,7 @@ function MessagesContent() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className="truncate text-sm font-semibold text-gray-900">{conv.clubName}</span>
+                    <span className="truncate text-sm font-semibold text-gray-900">{listLabel(conv)}</span>
                     <span className="shrink-0 text-[11px] text-gray-400">{conv.lastTime}</span>
                   </div>
                   <p className="mt-0.5 truncate text-xs text-gray-500">{conv.lastMessage}</p>
@@ -385,13 +487,11 @@ function MessagesContent() {
                 <ArrowLeft size={18} />
               </button>
               <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white", activeConv.avatarBg)}>
-                {activeConv.avatarInitial}
+                {listInitial(activeConv)}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="font-semibold text-gray-900">{activeConv.clubName}</p>
-                {activeConv.adminName && (
-                  <p className="text-xs text-gray-400">{activeConv.adminName}</p>
-                )}
+                <p className="font-semibold text-gray-900">{headerTitle(activeConv)}</p>
+                <p className="text-xs text-gray-400">{headerSub(activeConv)}</p>
               </div>
               <button className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-400 transition-colors hover:bg-gray-100">
                 <MoreVertical size={17} />
@@ -403,76 +503,79 @@ function MessagesContent() {
               {activeConv.messages.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
                   <div className={cn("flex h-14 w-14 items-center justify-center rounded-full text-lg font-bold text-white", activeConv.avatarBg)}>
-                    {activeConv.avatarInitial}
+                    {listInitial(activeConv)}
                   </div>
-                  <p className="text-sm font-medium text-gray-600">{activeConv.clubName}</p>
+                  <p className="text-sm font-medium text-gray-600">{headerTitle(activeConv)}</p>
                   <p className="text-xs text-gray-400">发送第一条消息，开始沟通吧 👋</p>
                 </div>
               ) : (
                 <div className="flex flex-col gap-3">
-                  {activeConv.messages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={cn("flex items-end gap-2", msg.from === "user" ? "flex-row-reverse" : "flex-row")}
-                    >
-                      {msg.from === "club" && (
-                        <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white", activeConv.avatarBg)}>
-                          {activeConv.avatarInitial}
-                        </div>
-                      )}
+                  {activeConv.messages.map((msg) => {
+                    const out = isOutgoing(msg);
+                    return (
                       <div
-                        className={cn(
-                          "max-w-[65%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm",
-                          msg.from === "user"
-                            ? "rounded-br-sm bg-primary-600 text-white"
-                            : "rounded-bl-sm bg-white text-gray-800",
-                        )}
+                        key={msg.id}
+                        className={cn("flex items-end gap-2", out ? "flex-row-reverse" : "flex-row")}
                       >
-                        {msg.text}
+                        {!out && (
+                          <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white", activeConv.avatarBg)}>
+                            {listInitial(activeConv)}
+                          </div>
+                        )}
+                        <div
+                          className={cn(
+                            "max-w-[65%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm",
+                            out
+                              ? "rounded-br-sm bg-primary-600 text-white"
+                              : "rounded-bl-sm bg-white text-gray-800",
+                          )}
+                        >
+                          {msg.text}
+                        </div>
+                        <span className={cn("mb-0.5 shrink-0 text-[10px] text-gray-400", out ? "mr-0.5" : "ml-0.5")}>
+                          {msg.time}
+                        </span>
                       </div>
-                      <span className={cn("mb-0.5 shrink-0 text-[10px] text-gray-400", msg.from === "user" ? "mr-0.5" : "ml-0.5")}>
-                        {msg.time}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                   <div ref={messagesEndRef} />
                 </div>
               )}
             </div>
 
             {/* Input area */}
-            <div className="shrink-0 border-t border-gray-100 bg-white px-4 pb-3 pt-2">
-              {adminClubName && (
+            <div className="shrink-0 border-t border-gray-100 bg-white px-4 pb-3 pt-2.5">
+              {userRole === "admin" && adminClubName && (
                 <p className="mb-1.5 text-[11px] font-semibold text-amber-600">
-                  以「{adminClubName}」身份发送
+                  以「{adminClubName}」身份回复 {activeConv.studentName}
                 </p>
               )}
               <div className="flex items-center gap-2.5">
-              <input
-                type="text"
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={
-                  adminClubName
-                    ? `以「${adminClubName}」身份回复…`
-                    : `发消息给 ${activeConv.clubName}…`
-                }
-                className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition focus:border-primary-300 focus:bg-white focus:ring-2 focus:ring-primary-100"
-              />
-              <button
-                onClick={sendMessage}
-                disabled={!inputText.trim()}
-                aria-label="发送"
-                className={cn(
-                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all active:scale-95",
-                  inputText.trim()
-                    ? "bg-primary-600 text-white hover:bg-primary-500"
-                    : "cursor-not-allowed bg-gray-100 text-gray-400",
-                )}
-              >
-                <Send size={16} />
-              </button>
+                <input
+                  type="text"
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={
+                    userRole === "admin"
+                      ? `回复 ${activeConv.studentName}…`
+                      : `发消息给 ${activeConv.clubName}…`
+                  }
+                  className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition focus:border-primary-300 focus:bg-white focus:ring-2 focus:ring-primary-100"
+                />
+                <button
+                  onClick={sendMessage}
+                  disabled={!inputText.trim()}
+                  aria-label="发送"
+                  className={cn(
+                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all active:scale-95",
+                    inputText.trim()
+                      ? "bg-primary-600 text-white hover:bg-primary-500"
+                      : "cursor-not-allowed bg-gray-100 text-gray-400",
+                  )}
+                >
+                  <Send size={16} />
+                </button>
               </div>
             </div>
           </>
@@ -483,7 +586,11 @@ function MessagesContent() {
             </div>
             <div>
               <p className="font-semibold text-gray-700">选择一个对话</p>
-              <p className="mt-1 text-sm text-gray-400">从左侧列表中选择社团开始沟通</p>
+              <p className="mt-1 text-sm text-gray-400">
+                {userRole === "admin"
+                  ? "从左侧选择申请人消息开始回复"
+                  : "从左侧列表中选择社团开始沟通"}
+              </p>
             </div>
           </div>
         )}
