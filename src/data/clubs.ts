@@ -32,6 +32,10 @@ export interface Club {
   category: Exclude<Category, "全部">;
   members: number;
   recruiting: boolean;
+  /** Mock interview/info session time shown in the home schedule widget */
+  interviewTime: string;
+  /** Location of the interview / info session */
+  interviewLocation: string;
 }
 
 export const ALL_CLUBS: Club[] = [
@@ -46,6 +50,8 @@ export const ALL_CLUBS: Club[] = [
     category: "文化体育类",
     members: 187,
     recruiting: true,
+    interviewTime: "本周六 14:00",
+    interviewLocation: "学生活动中心 302",
   },
   {
     id: 2,
@@ -57,6 +63,8 @@ export const ALL_CLUBS: Club[] = [
     category: "文化体育类",
     members: 89,
     recruiting: true,
+    interviewTime: "本周五 18:30",
+    interviewLocation: "风雨操场",
   },
   {
     id: 3,
@@ -68,6 +76,8 @@ export const ALL_CLUBS: Club[] = [
     category: "文化体育类",
     members: 342,
     recruiting: true,
+    interviewTime: "明天 15:00",
+    interviewLocation: "体育馆羽毛球场",
   },
   {
     id: 4,
@@ -79,6 +89,8 @@ export const ALL_CLUBS: Club[] = [
     category: "文化体育类",
     members: 127,
     recruiting: true,
+    interviewTime: "本周四 17:00",
+    interviewLocation: "体育馆一楼",
   },
   {
     id: 5,
@@ -90,6 +102,8 @@ export const ALL_CLUBS: Club[] = [
     category: "文化体育类",
     members: 203,
     recruiting: true,
+    interviewTime: "本周日 10:00",
+    interviewLocation: "图书馆 B102 研讨室",
   },
   {
     id: 6,
@@ -101,6 +115,8 @@ export const ALL_CLUBS: Club[] = [
     category: "文化体育类",
     members: 73,
     recruiting: true,
+    interviewTime: "下周二 14:30",
+    interviewLocation: "东区创意工坊",
   },
   {
     id: 7,
@@ -112,6 +128,8 @@ export const ALL_CLUBS: Club[] = [
     category: "文化体育类",
     members: 234,
     recruiting: true,
+    interviewTime: "本周六 13:00",
+    interviewLocation: "学生活动中心 105",
   },
 
   // ── 学术科技类 ────────────────────────────────────────────────────────────
@@ -125,6 +143,8 @@ export const ALL_CLUBS: Club[] = [
     category: "学术科技类",
     members: 294,
     recruiting: true,
+    interviewTime: "本周五 14:00",
+    interviewLocation: "传媒大厦 301",
   },
   {
     id: 9,
@@ -136,6 +156,8 @@ export const ALL_CLUBS: Club[] = [
     category: "学术科技类",
     members: 141,
     recruiting: true,
+    interviewTime: "明天 19:00",
+    interviewLocation: "理工楼 206",
   },
   {
     id: 10,
@@ -147,6 +169,8 @@ export const ALL_CLUBS: Club[] = [
     category: "学术科技类",
     members: 88,
     recruiting: true,
+    interviewTime: "下周一 15:30",
+    interviewLocation: "文科楼 402",
   },
   {
     id: 11,
@@ -158,6 +182,8 @@ export const ALL_CLUBS: Club[] = [
     category: "学术科技类",
     members: 62,
     recruiting: true,
+    interviewTime: "本周四 19:00",
+    interviewLocation: "传播学院 203",
   },
   {
     id: 12,
@@ -169,6 +195,8 @@ export const ALL_CLUBS: Club[] = [
     category: "学术科技类",
     members: 187,
     recruiting: true,
+    interviewTime: "下周三 14:00",
+    interviewLocation: "国际交流中心 A101",
   },
 
   // ── 创新创业类 ────────────────────────────────────────────────────────────
@@ -182,6 +210,8 @@ export const ALL_CLUBS: Club[] = [
     category: "创新创业类",
     members: 268,
     recruiting: true,
+    interviewTime: "本周六 10:30",
+    interviewLocation: "新媒体大楼 B201",
   },
   {
     id: 14,
@@ -193,6 +223,8 @@ export const ALL_CLUBS: Club[] = [
     category: "创新创业类",
     members: 178,
     recruiting: true,
+    interviewTime: "下周一 19:30",
+    interviewLocation: "创新创业中心 106",
   },
 
   // ── 思想政治类 ────────────────────────────────────────────────────────────
@@ -206,6 +238,8 @@ export const ALL_CLUBS: Club[] = [
     category: "思想政治类",
     members: 196,
     recruiting: true,
+    interviewTime: "本周六 08:30",
+    interviewLocation: "田径场集合",
   },
   {
     id: 16,
@@ -217,6 +251,8 @@ export const ALL_CLUBS: Club[] = [
     category: "思想政治类",
     members: 105,
     recruiting: true,
+    interviewTime: "明天 18:00",
+    interviewLocation: "主楼大厅",
   },
 
   // ── 志愿公益类 ────────────────────────────────────────────────────────────
@@ -230,6 +266,8 @@ export const ALL_CLUBS: Club[] = [
     category: "志愿公益类",
     members: 312,
     recruiting: true,
+    interviewTime: "本周五 16:00",
+    interviewLocation: "南区活动室 101",
   },
 
   // ── 自律互助类 ────────────────────────────────────────────────────────────
@@ -243,5 +281,7 @@ export const ALL_CLUBS: Club[] = [
     category: "自律互助类",
     members: 415,
     recruiting: true,
+    interviewTime: "本周三 19:00",
+    interviewLocation: "就业指导中心 201",
   },
 ];

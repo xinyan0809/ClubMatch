@@ -7,9 +7,11 @@ import {
   Circle, CheckCircle2, ChevronRight,
   CalendarClock, Inbox,
   Megaphone, HelpCircle, Newspaper,
-  Sparkles, CalendarX,
+  Sparkles, CalendarX, Clock, MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ALL_CLUBS, type Club } from "@/data/clubs";
+import { avatarColour } from "@/components/discover/ClubCard";
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  POST DATA TYPES
@@ -236,50 +238,119 @@ function ProfileWidget() {
 }
 
 function InterviewWidget() {
-  // Empty state — no scheduled interviews for a new user
+  const [appliedClubs, setAppliedClubs] = useState<Club[]>([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("clubmatch_applied_clubs");
+      if (raw) {
+        const ids = JSON.parse(raw) as number[];
+        setAppliedClubs(ALL_CLUBS.filter((c) => ids.includes(c.id)));
+      }
+    } catch { /* ignore */ }
+  }, []);
+
   return (
     <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-      <div className="flex items-center gap-2">
-        <CalendarClock size={15} className="text-gray-400" />
-        <h3 className="text-sm font-bold text-gray-900">近期日程</h3>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <CalendarClock size={15} className={appliedClubs.length > 0 ? "text-primary-500" : "text-gray-400"} />
+          <h3 className="text-sm font-bold text-gray-900">近期日程</h3>
+        </div>
+        {appliedClubs.length > 0 && (
+          <span className="rounded-full bg-primary-50 px-2 py-0.5 text-[11px] font-semibold text-primary-600 ring-1 ring-primary-200">
+            {appliedClubs.length} 场
+          </span>
+        )}
       </div>
 
-      <div className="mt-4 flex flex-col items-center gap-3 py-3 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-50 ring-1 ring-gray-100">
-          <CalendarX size={20} className="text-gray-300" />
+      {appliedClubs.length === 0 ? (
+        <div className="mt-4 flex flex-col items-center gap-3 py-3 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-50 ring-1 ring-gray-100">
+            <CalendarX size={20} className="text-gray-300" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-600">暂无日程</p>
+            <p className="mt-0.5 text-xs text-gray-400">申请社团后，面试通知会出现在这里</p>
+          </div>
+          <Link href="/discover" className="flex items-center gap-1.5 rounded-xl border border-primary-200 bg-primary-50 px-4 py-2 text-xs font-bold text-primary-600 transition-all hover:bg-primary-100 active:scale-95">
+            去申请社团 <ChevronRight size={13} />
+          </Link>
         </div>
-        <div>
-          <p className="text-sm font-medium text-gray-600">暂无日程</p>
-          <p className="mt-0.5 text-xs text-gray-400">申请社团后，面试通知会出现在这里</p>
+      ) : (
+        <div className="mt-4 space-y-3">
+          {appliedClubs.map((club) => (
+            <div key={club.id} className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+              <div className="flex items-center gap-2.5">
+                <div className={cn(
+                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white",
+                  avatarColour(club.id),
+                )}>
+                  {club.name[0]}
+                </div>
+                <p className="truncate text-sm font-semibold text-gray-900">{club.name}</p>
+              </div>
+              <div className="mt-2 space-y-1 pl-[2.375rem]">
+                <p className="flex items-center gap-1.5 text-xs text-gray-500">
+                  <Clock size={11} className="shrink-0 text-primary-400" />
+                  {club.interviewTime}
+                </p>
+                <p className="flex items-center gap-1.5 text-xs text-gray-500">
+                  <MapPin size={11} className="shrink-0 text-primary-400" />
+                  {club.interviewLocation}
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
-        <Link href="/discover" className="flex items-center gap-1.5 rounded-xl border border-primary-200 bg-primary-50 px-4 py-2 text-xs font-bold text-primary-600 transition-all hover:bg-primary-100 active:scale-95">
-          去申请社团 <ChevronRight size={13} />
-        </Link>
-      </div>
+      )}
     </div>
   );
 }
 
 function ApplicationsWidget() {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("clubmatch_applied_clubs");
+      if (raw) setCount((JSON.parse(raw) as number[]).length);
+    } catch { /* ignore */ }
+  }, []);
+
   return (
     <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold text-gray-900">我的投递</h3>
-        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-500">0 条</span>
+        <span className={cn(
+          "rounded-full px-2 py-0.5 text-[11px] font-semibold",
+          count > 0 ? "bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200" : "bg-gray-100 text-gray-500",
+        )}>
+          {count} 条
+        </span>
       </div>
 
-      <div className="mt-5 flex flex-col items-center gap-3 py-2 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-50 ring-1 ring-gray-100">
-          <Inbox size={24} className="text-gray-300" />
+      {count === 0 ? (
+        <div className="mt-5 flex flex-col items-center gap-3 py-2 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-50 ring-1 ring-gray-100">
+            <Inbox size={24} className="text-gray-300" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-700">你还没有投递任何组织哦～</p>
+            <p className="mt-1 text-xs text-gray-400">去发现感兴趣的社团，开启你的大学故事</p>
+          </div>
+          <Link href="/discover" className="mt-1 flex items-center gap-1.5 rounded-xl border border-primary-200 bg-primary-50 px-4 py-2 text-xs font-bold text-primary-600 transition-all hover:bg-primary-100 active:scale-95">
+            点击去寻找适合的社团 <ChevronRight size={13} />
+          </Link>
         </div>
-        <div>
-          <p className="text-sm font-medium text-gray-700">你还没有投递任何组织哦～</p>
-          <p className="mt-1 text-xs text-gray-400">去发现感兴趣的社团，开启你的大学故事</p>
+      ) : (
+        <div className="mt-4 flex flex-col gap-2">
+          <p className="text-xs text-gray-400">已成功投递 {count} 个社团，请留意面试通知。</p>
+          <Link href="/discover" className="flex items-center justify-center gap-1.5 rounded-xl border border-primary-200 bg-primary-50 py-2 text-xs font-bold text-primary-600 transition-all hover:bg-primary-100 active:scale-95">
+            继续发现更多社团 <ChevronRight size={13} />
+          </Link>
         </div>
-        <Link href="/discover" className="mt-1 flex items-center gap-1.5 rounded-xl border border-primary-200 bg-primary-50 px-4 py-2 text-xs font-bold text-primary-600 transition-all hover:bg-primary-100 active:scale-95">
-          点击去寻找适合的社团 <ChevronRight size={13} />
-        </Link>
-      </div>
+      )}
     </div>
   );
 }

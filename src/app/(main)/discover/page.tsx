@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import {
   Search, LayoutGrid, Star, BookOpen, Rocket,
-  Dumbbell, Heart, Target, Users, Sparkles,
+  Dumbbell, Heart, Target, Users, Sparkles, CheckCircle2,
 } from "lucide-react";
 import { ClubCard } from "@/components/discover/ClubCard";
 import { ClubDetailModal } from "@/components/discover/ClubDetailModal";
@@ -31,12 +31,17 @@ export default function DiscoverPage() {
   const [applied,      setApplied]      = useState<Set<number>>(new Set());
   const [selectedClub, setSelectedClub] = useState<Club | null>(null);
   const [aiOpen,       setAiOpen]       = useState(false);
+  const [toast,        setToast]        = useState(false);
 
-  // Load liked clubs from localStorage on mount
+  // Load liked + applied clubs from localStorage on mount
   useEffect(() => {
     try {
-      const raw = localStorage.getItem("clubmatch_liked_clubs");
-      if (raw) setLiked(new Set(JSON.parse(raw) as number[]));
+      const rawLiked = localStorage.getItem("clubmatch_liked_clubs");
+      if (rawLiked) setLiked(new Set(JSON.parse(rawLiked) as number[]));
+    } catch { /* ignore */ }
+    try {
+      const rawApplied = localStorage.getItem("clubmatch_applied_clubs");
+      if (rawApplied) setApplied(new Set(JSON.parse(rawApplied) as number[]));
     } catch { /* ignore */ }
   }, []);
 
@@ -48,8 +53,16 @@ export default function DiscoverPage() {
       return s;
     });
 
-  const handleApply = (id: number) =>
-    setApplied((prev) => new Set(prev).add(id));
+  const handleApply = (id: number) => {
+    setApplied((prev) => {
+      const s = new Set(prev);
+      s.add(id);
+      localStorage.setItem("clubmatch_applied_clubs", JSON.stringify([...s]));
+      return s;
+    });
+    setToast(true);
+    setTimeout(() => setToast(false), 3000);
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -224,6 +237,14 @@ export default function DiscoverPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Apply toast ──────────────────────────────────────────────────── */}
+      {toast && (
+        <div className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 flex items-center gap-2.5 rounded-2xl bg-gray-900/90 px-5 py-3 text-sm font-semibold text-white shadow-xl backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <CheckCircle2 size={16} className="shrink-0 text-emerald-400" />
+          报名成功！请留意主页的面试日程安排。
+        </div>
+      )}
 
       {/* ── AI Recommendation Modal ──────────────────────────────────────── */}
       {aiOpen && <AIRecommendationModal onClose={() => setAiOpen(false)} />}
