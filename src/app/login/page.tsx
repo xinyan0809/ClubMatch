@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   Eye, EyeOff, Mail, Lock, User, Building2,
   ArrowRight, CheckCircle2, Loader2, Sparkles,
-  GraduationCap, Phone,
+  GraduationCap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ALL_CLUBS } from "@/data/clubs";
@@ -13,6 +13,19 @@ import { ALL_CLUBS } from "@/data/clubs";
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Role = "student" | "admin";
 type Mode = "signin" | "signup";
+
+// ── Mock Users DB ──────────────────────────────────────────────────────────────
+const USERS_DB_KEY = "clubmatch_users_db";
+
+interface UserRecord {
+  email:          string;
+  password:       string;
+  role:           Role;
+  name:           string;
+  university:     string;
+  adminClubId?:   number;
+  adminClubName?: string;
+}
 
 // Supported universities — only CUC is enabled for the beta
 const UNIVERSITIES = [
@@ -147,64 +160,95 @@ export default function LoginPage() {
   const [showPassword, setShowPass]   = useState(false);
   const [isLoading,    setIsLoading]  = useState(false);
   const [error,        setError]      = useState("");
+  const [success,      setSuccess]    = useState("");
 
   const testimonial    = TESTIMONIALS[role];
   const isValidUni     = university === VALID_UNI;
   const adminClubValid = role !== "admin" || adminClubId !== 0;
-  const canSubmit      = isValidUni && credential.trim().length > 0 && password.length >= 6 && adminClubValid;
+  const canSubmit      = mode === "signin"
+    ? credential.trim().length > 0 && password.length >= 6
+    : isValidUni && credential.trim().length > 0 && password.length >= 6
+      && name.trim().length > 0 && adminClubValid;
 
-  const clearError = () => setError("");
+  const clearError = () => { setError(""); setSuccess(""); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-
-    if (!university) {
-      setError("请先选择您的高校");
-      return;
-    }
-    if (!isValidUni) {
-      setError("目前仅对中国传媒大学开放内测");
-      return;
-    }
-    if (!credential.trim()) {
-      setError("请输入邮箱或手机号");
-      return;
-    }
-    if (password.length < 6) {
-      setError("密码至少需要 6 位字符");
-      return;
-    }
+    setSuccess("");
 
     setIsLoading(true);
-    // Simulate Supabase round-trip — replace with real auth later
-    await new Promise((r) => setTimeout(r, 900));
+    await new Promise((r) => setTimeout(r, 700));
     setIsLoading(false);
 
-    // ── Wipe previous session to prevent cross-role contamination ──────────
-    // ONLY remove session/identity keys — global feeds and messages are kept.
+    const email = credential.trim().toLowerCase();
+    const db: UserRecord[] = JSON.parse(localStorage.getItem(USERS_DB_KEY) || "[]");
+
+    // ── REGISTER ──────────────────────────────────────────────────────────
+    if (mode === "signup") {
+      if (!email) { setError("请输入邮箱"); return; }
+      if (!isValidUni) { setError("目前仅对中国传媒大学开放内测"); return; }
+      if (!name.trim()) { setError("请输入姓名 / 社团名称"); return; }
+      if (password.length < 6) { setError("密码至少需要 6 位字符"); return; }
+      if (role === "admin" && adminClubId === 0) { setError("请选择您管理的社团"); return; }
+
+      if (db.some((u) => u.email === email)) {
+        setError("该邮箱已被注册，请直接登录。");
+        return;
+      }
+
+      const club = role === "admin" ? ALL_CLUBS.find((c) => c.id === adminClubId) : undefined;
+      const newUser: UserRecord = {
+        email,
+        password,
+        role,
+        name:          name.trim(),
+        university:    "中国传媒大学",
+        adminClubId:   club?.id,
+        adminClubName: club?.name,
+      };
+      db.push(newUser);
+      localStorage.setItem(USERS_DB_KEY, JSON.stringify(db));
+
+      // Switch to login and show success banner
+      setSuccess("注册成功，请登录！");
+      setName("");
+      setAdminClubId(0);
+      setPassword("");
+      setUniversity("");
+      setMode("signin");
+      return;
+    }
+
+    // ── LOGIN ─────────────────────────────────────────────────────────────
+    if (!email) { setError("请输入邮箱"); return; }
+    if (password.length < 6) { setError("密码至少需要 6 位字符"); return; }
+
+    const user = db.find((u) => u.email === email);
+    if (!user) {
+      setError("账号不存在，请先注册！");
+      return;
+    }
+    if (user.password !== password) {
+      setError("密码错误！");
+      return;
+    }
+
+    // ── Wipe previous session then write new one ───────────────────────────
     [
       "cm_userName", "cm_userProfile", "cm_userRole", "cm_userUniversity",
       "cm_adminClubId", "cm_adminClubName", "cm_adminProfile",
     ].forEach((k) => localStorage.removeItem(k));
 
-    // Persist session to localStorage so downstream pages can personalise UX
-    localStorage.setItem("cm_userRole", role);
-    localStorage.setItem("cm_userUniversity", "中国传媒大学");
-    // Only save name on signup (signin has no name field)
-    if (mode === "signup" && name.trim()) {
-      localStorage.setItem("cm_userName", name.trim());
-    }
-    // Save admin club details
-    if (role === "admin" && adminClubId !== 0) {
-      const club = ALL_CLUBS.find((c) => c.id === adminClubId);
-      if (club) {
-        localStorage.setItem("cm_adminClubId",   club.id.toString());
-        localStorage.setItem("cm_adminClubName", club.name);
-      }
+    localStorage.setItem("cm_userRole",      user.role);
+    localStorage.setItem("cm_userName",       user.name);
+    localStorage.setItem("cm_userUniversity", user.university);
+    if (user.role === "admin" && user.adminClubId) {
+      localStorage.setItem("cm_adminClubId",   user.adminClubId.toString());
+      localStorage.setItem("cm_adminClubName", user.adminClubName ?? "");
     }
 
-    router.push(role === "student" ? "/home" : "/admin");
+    router.push(user.role === "student" ? "/home" : "/admin");
   };
 
   return (
@@ -398,15 +442,17 @@ export default function LoginPage() {
               />
             )}
 
-            {/* University selector — always shown */}
-            <UniversitySelect
-              value={university}
-              onChange={(v) => { setUniversity(v); clearError(); }}
-              error={!!error && !isValidUni}
-            />
+            {/* University selector — register only */}
+            {mode === "signup" && (
+              <UniversitySelect
+                value={university}
+                onChange={(v) => { setUniversity(v); clearError(); }}
+                error={!!error && !isValidUni}
+              />
+            )}
 
-            {/* Club selector — admin only */}
-            {role === "admin" && (
+            {/* Club selector — admin + register only */}
+            {mode === "signup" && role === "admin" && (
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="adminClub" className="text-xs font-semibold text-gray-700">
                   选择您的社团
@@ -448,16 +494,16 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Credential */}
+            {/* Email */}
             <InputField
               id="credential"
-              label="邮箱或手机号"
-              type="text"
+              label="邮箱"
+              type="email"
               value={credential}
               onChange={(v) => { setCred(v); clearError(); }}
-              placeholder="请输入邮箱或手机号"
-              icon={credential.includes("@") ? Mail : Phone}
-              autoComplete="username"
+              placeholder="请输入您的邮箱"
+              icon={Mail}
+              autoComplete="email"
             />
 
             {/* Password */}
@@ -494,6 +540,14 @@ export default function LoginPage() {
               </div>
             )}
 
+            {/* ── Success banner ─────────────────────────── */}
+            {success && (
+              <div className="flex items-start gap-2 rounded-xl bg-emerald-50 px-4 py-3 ring-1 ring-emerald-200">
+                <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-emerald-500" />
+                <p className="text-xs font-medium text-emerald-700">{success}</p>
+              </div>
+            )}
+
             {/* ── Error / validation message ─────────────── */}
             {error && (
               <div className="flex items-start gap-2 rounded-xl bg-red-50 px-4 py-3 ring-1 ring-red-200">
@@ -502,8 +556,8 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* ── CUC-only notice (shown when no uni selected) ── */}
-            {!university && !error && (
+            {/* ── CUC-only notice (signup, no uni selected) ── */}
+            {mode === "signup" && !university && !error && (
               <p className="text-center text-[11px] text-gray-400">
                 目前仅对
                 <span className="font-semibold text-primary-600"> 中国传媒大学 </span>
