@@ -253,17 +253,19 @@ function StudentProfile() {
   const [aiOpen,     setAiOpen]     = useState(false);
 
   useEffect(() => {
-    setUserName(localStorage.getItem("cm_userName")?.trim() || "");
-    setUserUni(localStorage.getItem("cm_userUniversity")    || "中国传媒大学");
+    const nameVal = localStorage.getItem("cm_userName")?.trim() || "";
+    setUserName(nameVal);
+    setUserUni(localStorage.getItem("cm_userUniversity") || "中国传媒大学");
 
-    const profile = JSON.parse(localStorage.getItem("cm_userProfile") || "{}");
+    const profileKey = nameVal ? `profile_data_${nameVal}` : "cm_userProfile";
+    const profile = JSON.parse(localStorage.getItem(profileKey) || "{}");
     setMajor (profile.major  || "");
     setMbti  (profile.mbti   || "");
     setSkills(profile.skills || "");
     setBio   (profile.bio    || "");
 
     try {
-      const raw = localStorage.getItem("clubmatch_liked_clubs");
+      const raw = localStorage.getItem(`liked_clubs_${nameVal}`);
       if (raw) {
         const ids = JSON.parse(raw) as number[];
         setLikedClubs(ALL_CLUBS.filter((c) => ids.includes(c.id)));
@@ -279,12 +281,13 @@ function StudentProfile() {
       localStorage.setItem("cm_userName", value);
       return;
     }
-    const profile = JSON.parse(localStorage.getItem("cm_userProfile") || "{}");
+    const profileKey = userName ? `profile_data_${userName}` : "cm_userProfile";
+    const profile = JSON.parse(localStorage.getItem(profileKey) || "{}");
     if (field === "专业")    { setMajor(value);  profile.major  = value; }
     if (field === "MBTI")    { setMbti(value);   profile.mbti   = value; }
     if (field === "技能标签") { setSkills(value); profile.skills = value; }
     if (field === "个人介绍") { setBio(value);    profile.bio    = value; }
-    localStorage.setItem("cm_userProfile", JSON.stringify(profile));
+    localStorage.setItem(profileKey, JSON.stringify(profile));
   };
 
   const displayName = userName || "同学";

@@ -362,7 +362,7 @@ function ProfileWidget() {
 
   useEffect(() => {
     const name    = localStorage.getItem("cm_userName")?.trim() ?? "";
-    const profile = JSON.parse(localStorage.getItem("cm_userProfile") ?? "{}") as {
+    const profile = JSON.parse(localStorage.getItem(name ? `profile_data_${name}` : "cm_userProfile") ?? "{}") as {
       major?: string; mbti?: string; skills?: string; bio?: string; avatar?: string;
     };
     setSteps([
@@ -415,7 +415,8 @@ function InterviewWidget() {
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem("clubmatch_applied_clubs");
+      const userName = localStorage.getItem("cm_userName")?.trim() || "";
+      const raw = localStorage.getItem(`applied_clubs_${userName}`);
       if (raw) {
         const ids = JSON.parse(raw) as number[];
         setAppliedClubs(ALL_CLUBS.filter((c) => ids.includes(c.id)));
@@ -483,7 +484,8 @@ function ApplicationsWidget() {
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem("clubmatch_applied_clubs");
+      const userName = localStorage.getItem("cm_userName")?.trim() || "";
+      const raw = localStorage.getItem(`applied_clubs_${userName}`);
       if (raw) setCount((JSON.parse(raw) as number[]).length);
     } catch { /* ignore */ }
   }, []);
@@ -531,11 +533,17 @@ export default function HomePage() {
 
   const [posts,           setPosts]           = useState<FeedPost[]>([]);
   const [userName,        setUserName]        = useState("");
+  const [isAdmin,         setIsAdmin]         = useState(false);
+  const [adminClubName,   setAdminClubName]   = useState("");
   const [showCompose,     setShowCompose]     = useState(false);
   const [expandedComment, setExpandedComment] = useState<string | null>(null);
 
   // ── Load feed from localStorage on mount (seed if empty) ──────────────────
   useEffect(() => {
+    const role     = localStorage.getItem("cm_userRole");
+    const clubName = localStorage.getItem("cm_adminClubName") || "";
+    setIsAdmin(role === "admin");
+    setAdminClubName(clubName);
     setUserName(localStorage.getItem("cm_userName")?.trim() || "");
     try {
       const raw = localStorage.getItem(FEED_KEY);
@@ -604,41 +612,54 @@ export default function HomePage() {
     );
   };
 
-  const displayName = userName || "同学";
+  const displayName = isAdmin
+    ? (adminClubName || "社团")
+    : (userName || "同学");
 
   return (
     <div className="min-h-screen bg-[#f9fafb]">
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+      <div className={cn("mx-auto px-4 py-6 sm:px-6", isAdmin ? "max-w-3xl" : "max-w-6xl")}>
 
         {/* ── Greeting ─────────────────────────────────────────── */}
         <header className="mb-6">
-          <h1 className="text-xl font-bold text-gray-900">你好，{displayName} 👋</h1>
-          <p className="mt-0.5 text-sm text-gray-500">
-            欢迎加入&nbsp;
-            <span className="font-semibold text-primary-600">中国传媒大学</span>
-            &nbsp;· 期待你找到心仪的圈子 ✨
-          </p>
+          {isAdmin ? (
+            <>
+              <h1 className="text-xl font-bold text-gray-900">
+                你好，<span className="text-amber-600">{displayName}</span> 负责人 👋
+              </h1>
+              <p className="mt-0.5 text-sm text-gray-500">
+                欢迎来到&nbsp;
+                <span className="font-semibold text-primary-600">校园动态管理中心</span>
+                &nbsp;· 在这里发布招新公告，吸引优质学生 ✨
+              </p>
+            </>
+          ) : (
+            <>
+              <h1 className="text-xl font-bold text-gray-900">你好，{displayName} 👋</h1>
+              <p className="mt-0.5 text-sm text-gray-500">
+                欢迎加入&nbsp;
+                <span className="font-semibold text-primary-600">中国传媒大学</span>
+                &nbsp;· 期待你找到心仪的圈子 ✨
+              </p>
+            </>
+          )}
         </header>
 
-        {/* ── Two-column layout ────────────────────────────────── */}
-        <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
-
-          {/* ═══ LEFT: FEED ═══ */}
+        {isAdmin ? (
+          /* ── Admin: single-column centered feed ── */
           <section className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-bold text-gray-700">校园动态</h2>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowCompose(true)}
-                  className="flex items-center gap-1.5 rounded-xl bg-primary-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-primary-500 active:scale-95"
+                  className="flex items-center gap-1.5 rounded-xl bg-amber-500 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-amber-400 active:scale-95"
                 >
                   <SquarePen size={13} />
-                  发布
+                  发布公告
                 </button>
-                <button className="text-xs font-semibold text-primary-600 hover:underline">查看全部</button>
               </div>
             </div>
-
             {posts.map((post) => (
               <PostCard
                 key={post.id}
@@ -651,15 +672,47 @@ export default function HomePage() {
               />
             ))}
           </section>
+        ) : (
+          /* ── Student: two-column layout ── */
+          <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
 
-          {/* ═══ RIGHT: SIDEBAR ═══ */}
-          <aside className="flex flex-col gap-4">
-            <h2 className="text-sm font-bold text-gray-700">个人行动中心</h2>
-            <ProfileWidget />
-            <InterviewWidget />
-            <ApplicationsWidget />
-          </aside>
-        </div>
+            {/* ═══ LEFT: FEED ═══ */}
+            <section className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-bold text-gray-700">校园动态</h2>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowCompose(true)}
+                    className="flex items-center gap-1.5 rounded-xl bg-primary-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-primary-500 active:scale-95"
+                  >
+                    <SquarePen size={13} />
+                    发布
+                  </button>
+                  <button className="text-xs font-semibold text-primary-600 hover:underline">查看全部</button>
+                </div>
+              </div>
+              {posts.map((post) => (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  onLike={() => handleLike(post.id)}
+                  onAvatarClick={() => handleAvatarClick(post.authorId, post.authorName)}
+                  commentExpanded={expandedComment === post.id}
+                  onToggleComment={() => setExpandedComment((prev) => prev === post.id ? null : post.id)}
+                  onAddComment={(text) => handleAddComment(post.id, text)}
+                />
+              ))}
+            </section>
+
+            {/* ═══ RIGHT: SIDEBAR ═══ */}
+            <aside className="flex flex-col gap-4">
+              <h2 className="text-sm font-bold text-gray-700">个人行动中心</h2>
+              <ProfileWidget />
+              <InterviewWidget />
+              <ApplicationsWidget />
+            </aside>
+          </div>
+        )}
       </div>
 
       {/* ── Compose modal ────────────────────────────────────────────────── */}

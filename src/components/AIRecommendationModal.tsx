@@ -11,122 +11,132 @@ import { avatarColour } from "@/components/discover/ClubCard";
 //  MATCHING LOGIC
 // ─────────────────────────────────────────────────────────────────────────────
 
-function computeAIMatches(bio: string, mbti: string, major: string): Club[] {
+interface MatchResult {
+  clubs: Club[];
+  isFallback: boolean;
+}
+
+function computeAIMatches(bio: string, mbti: string, major: string): MatchResult {
   const scores = new Map<number, number>();
   const add = (id: number, pts: number) => scores.set(id, (scores.get(id) ?? 0) + pts);
 
   const b = bio.toLowerCase();
   const m = major.toLowerCase();
 
-  // Bio keyword → club boosts (5 pts)
-  const bioMap: [string, number[]][] = [
-    ["棋",       [1]],
-    ["篮球",     [2, 4]],
-    ["羽毛球",   [3]],
-    ["旅行",     [5]],
-    ["游览",     [5]],
-    ["涂鸦",     [6]],
-    ["艺术",     [6, 8]],
-    ["绘画",     [6]],
-    ["汉服",     [7]],
-    ["传统",     [7, 5]],
-    ["广告",     [8]],
-    ["创意",     [8, 6]],
-    ["科学",     [9]],
-    ["天文",     [9]],
-    ["自然",     [9]],
-    ["文学",     [10]],
-    ["写作",     [10]],
-    ["阅读",     [10]],
-    ["历史",     [11]],
-    ["纪录",     [11]],
-    ["访谈",     [11]],
-    ["辩论",     [12]],
-    ["外交",     [12]],
-    ["国际",     [12]],
-    ["新媒体",   [13]],
-    ["运营",     [13]],
-    ["创业",     [14]],
-    ["创新",     [14]],
-    ["商业",     [14]],
-    ["军事",     [15]],
-    ["国防",     [15]],
-    ["志愿",     [16, 17]],
-    ["公益",     [16, 17]],
-    ["动物",     [17]],
-    ["猫",       [17]],
-    ["狗",       [17]],
-    ["宠物",     [17]],
-    ["职业规划", [18]],
-    ["就业",     [18]],
-    ["迷茫",     [18]],
+  // ── Bio theme groups: any matched keyword → +30 pts to target clubs ──────
+  // Structure: [keyword_list, club_id_list]
+  const BIO_THEMES: [string[], number[]][] = [
+    // 棋类/智力
+    [["棋", "象棋", "围棋", "五子棋", "博弈", "安静", "思考", "逻辑", "策略", "动脑", "智力", "脑力"],
+      [1]],
+    // 体育/运动 (通用)
+    [["球", "运动", "出汗", "锻炼", "活泼", "体力", "健身", "跑步", "跑", "跳", "体能", "打球"],
+      [2, 3, 4]],
+    // 篮球专项
+    [["篮球", "扣篮", "街球", "三分", "投篮"],
+      [2, 4]],
+    // 羽毛球专项
+    [["羽毛球", "羽球", "羽毛"],
+      [3]],
+    // 旅游/游学
+    [["旅行", "游览", "旅游", "北京", "探索", "出行", "景点", "走走", "周边游", "徒步"],
+      [5]],
+    // 艺术/视觉
+    [["画", "艺术", "设计", "创意", "审美", "色彩", "涂鸦", "绘画", "插画", "手绘", "视觉"],
+      [6, 8]],
+    // 传统/汉服
+    [["传统", "文化", "汉服", "古风", "礼仪", "国风", "古装", "汉唐", "国潮", "民俗"],
+      [7]],
+    // 广告/品牌
+    [["广告", "品牌", "文案", "营销", "策划", "推广"],
+      [8]],
+    // 科学/天文
+    [["科学", "天文", "自然", "物理", "实验", "星空", "宇宙", "探究", "生物", "化学"],
+      [9]],
+    // 文学/写作
+    [["文学", "写作", "阅读", "读书", "诗", "小说", "散文", "书", "鲁迅", "文字", "写文章"],
+      [10]],
+    // 历史/记录
+    [["历史", "纪录", "访谈", "口述", "记录", "老人", "田野", "人文"],
+      [11]],
+    // 辩论/国际
+    [["辩论", "外交", "国际", "演讲", "表达", "说话", "模联", "联合国", "议题"],
+      [12]],
+    // 创业/商业/新媒体 (共有)
+    [["创业", "商业", "赚钱", "新媒体", "互联网", "策划", "运营", "点子", "创新", "实践", "变现"],
+      [13, 14]],
+    // 新媒体/内容专项
+    [["博主", "自媒体", "视频", "内容", "流量", "账号", "粉丝", "up主", "短视频"],
+      [13]],
+    // 创业专项
+    [["融资", "商业计划", "产品经理", "项目", "startup", "创始人", "投资"],
+      [14]],
+    // 军事/国防
+    [["军事", "国防", "爱国", "意志", "部队", "军训", "武器", "战略"],
+      [15]],
+    // 公益/志愿 (共有)
+    [["爱心", "动物", "猫", "狗", "志愿", "公益", "帮助", "温暖", "奉献", "慈善"],
+      [16, 17, 18]],
+    // 小动物专项
+    [["猫", "狗", "宠物", "小动物", "喵", "汪", "救助", "流浪猫", "流浪狗"],
+      [17]],
+    // 职业规划专项
+    [["规划", "未来", "实习", "求职", "就业", "迷茫", "职业", "面试", "简历", "找工作"],
+      [18]],
   ];
-  for (const [kw, ids] of bioMap) {
-    if (b.includes(kw)) ids.forEach(id => add(id, 5));
+
+  for (const [keywords, ids] of BIO_THEMES) {
+    if (keywords.some(kw => b.includes(kw))) {
+      ids.forEach(id => add(id, 30));
+    }
   }
 
-  // Major keyword → club boosts (3 pts)
-  const majorMap: [string, number[]][] = [
-    ["广告",   [8]],
-    ["新闻",   [8, 11, 13]],
-    ["传播",   [8, 11, 13]],
-    ["传媒",   [8, 11, 13]],
-    ["播音",   [8, 13]],
-    ["主持",   [8, 13]],
-    ["计算机", [9, 14]],
-    ["软件",   [9, 14]],
-    ["信息",   [9, 14]],
-    ["艺术",   [6, 8]],
-    ["设计",   [6, 8]],
-    ["文学",   [10]],
-    ["中文",   [10]],
-    ["汉语",   [10]],
-    ["历史",   [11]],
-    ["外语",   [12]],
-    ["英语",   [12, 13]],
-    ["国际",   [12]],
-    ["经济",   [14]],
-    ["管理",   [14]],
-    ["金融",   [14]],
-    ["思政",   [15, 16]],
-    ["政治",   [15, 16]],
-    ["体育",   [2, 3]],
+  // ── Major keyword boosts (+15 pts) ──────────────────────────────────────
+  const MAJOR_MAP: [string[], number[]][] = [
+    [["广告"],               [8]],
+    [["新闻", "传播", "传媒"], [8, 11, 13]],
+    [["播音", "主持"],       [8, 13]],
+    [["计算机", "软件", "信息"], [9, 14]],
+    [["艺术", "设计"],       [6, 8]],
+    [["文学", "中文", "汉语"], [10]],
+    [["历史"],               [11]],
+    [["外语", "英语", "国际"], [12]],
+    [["经济", "管理", "金融"], [14]],
+    [["思政", "政治"],       [15, 16]],
+    [["体育"],               [2, 3]],
   ];
-  for (const [kw, ids] of majorMap) {
-    if (m.includes(kw)) ids.forEach(id => add(id, 3));
+
+  for (const [keywords, ids] of MAJOR_MAP) {
+    if (keywords.some(kw => m.includes(kw))) {
+      ids.forEach(id => add(id, 15));
+    }
   }
 
-  // MBTI boosts (1–2 pts)
+  // ── MBTI boosts (+10 pts) ────────────────────────────────────────────────
   if (mbti.length === 4) {
-    if (mbti[0] === "E") [2, 12, 13, 14].forEach(id => add(id, 2));
-    if (mbti[0] === "I") [1, 10, 11, 18].forEach(id => add(id, 2));
-    if (mbti[1] === "N") [6, 10, 12, 14].forEach(id => add(id, 2));
-    if (mbti[1] === "S") [2, 3, 7,  9].forEach(id  => add(id, 2));
-    if (mbti[2] === "F") [5, 7, 11, 17].forEach(id => add(id, 2));
-    if (mbti[2] === "T") [1, 9, 12, 14].forEach(id => add(id, 2));
-    if (mbti[3] === "J") [1, 8, 15, 18].forEach(id => add(id, 1));
-    if (mbti[3] === "P") [5, 6,  9, 11].forEach(id => add(id, 1));
+    const u = mbti.toUpperCase();
+    if (u[0] === "E") [2, 12, 13, 14].forEach(id => add(id, 10));
+    if (u[0] === "I") [1, 10, 11, 18].forEach(id => add(id, 10));
+    if (u[1] === "N") [6, 10, 12, 14].forEach(id => add(id, 10));
+    if (u[1] === "S") [2,  3,  7,  9].forEach(id => add(id, 10));
+    if (u[2] === "F") [5,  7, 11, 17].forEach(id => add(id, 10));
+    if (u[2] === "T") [1,  9, 12, 14].forEach(id => add(id, 10));
+    if (u[3] === "J") [1,  8, 15, 18].forEach(id => add(id, 10));
+    if (u[3] === "P") [5,  6,  9, 11].forEach(id => add(id, 10));
   }
 
-  const maxScore = scores.size > 0 ? Math.max(...scores.values()) : 0;
+  // ── Quality gate: only clubs with score ≥ 30 qualify ────────────────────
+  const THRESHOLD = 30;
+  const qualified = ALL_CLUBS
+    .filter(c => (scores.get(c.id) ?? 0) >= THRESHOLD)
+    .sort((a, bc) => (scores.get(bc.id) ?? 0) - (scores.get(a.id) ?? 0))
+    .slice(0, 3);
 
-  if (maxScore >= 5) {
-    const ranked = ALL_CLUBS
-      .filter(c => scores.has(c.id))
-      .sort((a, bc) => (scores.get(bc.id) ?? 0) - (scores.get(a.id) ?? 0))
-      .slice(0, 3);
+  if (qualified.length > 0) return { clubs: qualified, isFallback: false };
 
-    if (ranked.length >= 3) return ranked;
-
-    const rankedIds = new Set(ranked.map(c => c.id));
-    const extras = [...ALL_CLUBS]
-      .filter(c => !rankedIds.has(c.id))
-      .sort((a, bc) => bc.members - a.members)
-      .slice(0, 3 - ranked.length);
-    return [...ranked, ...extras];
-  }
-
-  return [...ALL_CLUBS].sort((a, bc) => bc.members - a.members).slice(0, 3);
+  // ── Fallback: no strong matches → 1 curated generic club ────────────────
+  const fallback = ALL_CLUBS.find(c => c.id === 5) ?? ALL_CLUBS[0];
+  return { clubs: [fallback], isFallback: true };
 }
 
 function buildReason(club: Club, bio: string, mbti: string, major: string): string {
@@ -223,13 +233,18 @@ export function AIRecommendationModal({ onClose }: { onClose: () => void }) {
 
   // Load profile on mount
   useEffect(() => {
-    const profile = JSON.parse(localStorage.getItem("cm_userProfile") || "{}");
+    const userName = localStorage.getItem("cm_userName")?.trim() || "";
+    const key      = userName ? `profile_data_${userName}` : "cm_userProfile";
+    const profile  = JSON.parse(localStorage.getItem(key) || "{}");
     setBio  (profile.bio   || "");
     setMbti (profile.mbti  || "");
     setMajor(profile.major || "");
   }, []);
 
-  const matches = useMemo(() => computeAIMatches(bio, mbti, major), [bio, mbti, major]);
+  const { clubs: matches, isFallback } = useMemo(
+    () => computeAIMatches(bio, mbti, major),
+    [bio, mbti, major],
+  );
 
   // Loading animation — 3 s total
   useEffect(() => {
@@ -290,7 +305,14 @@ export function AIRecommendationModal({ onClose }: { onClose: () => void }) {
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
               <div className="flex items-center gap-2">
                 <Sparkles size={18} className="text-amber-400" />
-                <h3 className="text-base font-bold text-gray-900">AI 匹配结果</h3>
+                <h3 className="text-base font-bold text-gray-900">
+                  AI 匹配结果
+                  {!isFallback && (
+                    <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                      {matches.length} 个
+                    </span>
+                  )}
+                </h3>
               </div>
               <button
                 onClick={onClose}
@@ -301,13 +323,25 @@ export function AIRecommendationModal({ onClose }: { onClose: () => void }) {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+            <div className={cn(
+              "flex-1 overflow-y-auto px-6 py-5 space-y-4",
+              matches.length < 3 && "flex flex-col justify-center",
+            )}>
+              {isFallback && (
+                <div className="mb-2 rounded-xl bg-violet-50 px-4 py-3 text-center ring-1 ring-violet-200">
+                  <p className="text-xs leading-relaxed text-violet-700">
+                    ✨ 你的爱好非常独特！虽然没有找到绝对匹配的标签，但这个宝藏社团也许能给你带来意想不到的惊喜。
+                  </p>
+                </div>
+              )}
               {matches.map((club, rank) => (
                 <div key={club.id} className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-black text-amber-700">
-                      #{rank + 1}
-                    </div>
+                    {!isFallback && (
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-black text-amber-700">
+                        #{rank + 1}
+                      </div>
+                    )}
                     <div className={cn(
                       "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-base font-bold text-white",
                       avatarColour(club.id),
@@ -322,12 +356,14 @@ export function AIRecommendationModal({ onClose }: { onClose: () => void }) {
                     </div>
                   </div>
                   <p className="mt-2 text-xs leading-relaxed text-gray-500">{club.shortDescription}</p>
-                  <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2.5 ring-1 ring-amber-200">
-                    <p className="mb-1 text-[11px] font-bold text-amber-600">AI 推荐理由</p>
-                    <p className="text-xs leading-relaxed text-amber-900">
-                      {buildReason(club, bio, mbti, major)}
-                    </p>
-                  </div>
+                  {!isFallback && (
+                    <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2.5 ring-1 ring-amber-200">
+                      <p className="mb-1 text-[11px] font-bold text-amber-600">AI 推荐理由</p>
+                      <p className="text-xs leading-relaxed text-amber-900">
+                        {buildReason(club, bio, mbti, major)}
+                      </p>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

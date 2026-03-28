@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   Search, LayoutGrid, Star, BookOpen, Rocket,
   Dumbbell, Heart, Target, Users, Sparkles, CheckCircle2,
@@ -33,14 +33,20 @@ export default function DiscoverPage() {
   const [aiOpen,       setAiOpen]       = useState(false);
   const [toast,        setToast]        = useState(false);
 
+  const likedKeyRef   = useRef("");
+  const appliedKeyRef = useRef("");
+
   // Load liked + applied clubs from localStorage on mount
   useEffect(() => {
+    const userName      = localStorage.getItem("cm_userName")?.trim() || "";
+    likedKeyRef.current   = `liked_clubs_${userName}`;
+    appliedKeyRef.current = `applied_clubs_${userName}`;
     try {
-      const rawLiked = localStorage.getItem("clubmatch_liked_clubs");
+      const rawLiked = localStorage.getItem(likedKeyRef.current);
       if (rawLiked) setLiked(new Set(JSON.parse(rawLiked) as number[]));
     } catch { /* ignore */ }
     try {
-      const rawApplied = localStorage.getItem("clubmatch_applied_clubs");
+      const rawApplied = localStorage.getItem(appliedKeyRef.current);
       if (rawApplied) setApplied(new Set(JSON.parse(rawApplied) as number[]));
     } catch { /* ignore */ }
   }, []);
@@ -49,7 +55,7 @@ export default function DiscoverPage() {
     setLiked((prev) => {
       const s = new Set(prev);
       s.has(id) ? s.delete(id) : s.add(id);
-      localStorage.setItem("clubmatch_liked_clubs", JSON.stringify([...s]));
+      localStorage.setItem(likedKeyRef.current, JSON.stringify([...s]));
       return s;
     });
 
@@ -57,7 +63,7 @@ export default function DiscoverPage() {
     setApplied((prev) => {
       const s = new Set(prev);
       s.add(id);
-      localStorage.setItem("clubmatch_applied_clubs", JSON.stringify([...s]));
+      localStorage.setItem(appliedKeyRef.current, JSON.stringify([...s]));
       return s;
     });
     setToast(true);
