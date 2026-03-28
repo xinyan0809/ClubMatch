@@ -2,34 +2,62 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Home, Compass, MessageCircle, User, Bell } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Home, Compass, MessageCircle, User, Bell, ClipboardList, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 
-const navLinks = [
-  { href: "/home",     label: "首页", icon: Home          },
-  { href: "/discover", label: "社团", icon: Compass       },
-  { href: "/messages", label: "消息", icon: MessageCircle },
-  { href: "/profile",  label: "我的", icon: User          },
+const SESSION_KEYS = [
+  "cm_userName", "cm_userProfile", "cm_userRole", "cm_userUniversity",
+  "cm_adminClubId", "cm_adminClubName", "cm_adminProfile",
+];
+
+const STUDENT_LINKS = [
+  { href: "/home",     label: "首页",   icon: Home          },
+  { href: "/discover", label: "社团",   icon: Compass       },
+  { href: "/messages", label: "消息",   icon: MessageCircle },
+  { href: "/profile",  label: "我的",   icon: User          },
+];
+
+const ADMIN_LINKS = [
+  { href: "/home",     label: "首页",    icon: Home          },
+  { href: "/admin",    label: "招新管理", icon: ClipboardList },
+  { href: "/messages", label: "消息",    icon: MessageCircle },
+  { href: "/profile",  label: "社团主页", icon: User          },
 ];
 
 export function TopNav() {
-  const pathname = usePathname();
+  const pathname  = usePathname();
+  const router    = useRouter();
   const [initial, setInitial] = useState("同");
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  const handleLogout = () => {
+    SESSION_KEYS.forEach((k) => localStorage.removeItem(k));
+    router.push("/login");
+  };
 
   useEffect(() => {
-    const stored = localStorage.getItem("cm_userName");
-    if (stored?.trim()) setInitial(stored.trim()[0]);
+    const role      = localStorage.getItem("cm_userRole");
+    const clubName  = localStorage.getItem("cm_adminClubName") || "";
+    const userName  = localStorage.getItem("cm_userName") || "";
+    setIsAdmin(role === "admin");
+    if (role === "admin" && clubName) {
+      setInitial(clubName[0]);
+    } else if (userName.trim()) {
+      setInitial(userName.trim()[0]);
+    }
   }, []);
+
+  const navLinks = isAdmin ? ADMIN_LINKS : STUDENT_LINKS;
 
   return (
     <header className="sticky top-0 z-50 hidden md:flex w-full border-b border-border bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-6">
 
         {/* ── Logo ──────────────────────────────────────────── */}
-        <Link href="/discover" className="flex items-center gap-2.5">
+        <Link href="/home" className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600">
             <span className="text-sm font-bold text-white">聚</span>
           </div>
@@ -62,7 +90,7 @@ export function TopNav() {
           })}
         </nav>
 
-        {/* ── Right side: bell + avatar ─────────────────────── */}
+        {/* ── Right side: bell + avatar + logout ───────────── */}
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" aria-label="通知">
             <Bell size={18} className="text-gray-600" />
@@ -73,6 +101,15 @@ export function TopNav() {
               <AvatarFallback>{initial}</AvatarFallback>
             </Avatar>
           </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleLogout}
+            aria-label="退出登录"
+            title="退出登录"
+          >
+            <LogOut size={16} className="text-gray-500 hover:text-red-500 transition-colors" />
+          </Button>
         </div>
       </div>
     </header>

@@ -1,19 +1,34 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Compass, MessageCircle, User } from "lucide-react";
+import { Home, Compass, MessageCircle, User, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const tabs = [
-  { href: "/home",     label: "首页", icon: Home          },
-  { href: "/discover", label: "社团", icon: Compass       },
-  { href: "/messages", label: "消息", icon: MessageCircle },
-  { href: "/profile",  label: "我的", icon: User          },
+const STUDENT_TABS = [
+  { href: "/home",     label: "首页",   icon: Home          },
+  { href: "/discover", label: "社团",   icon: Compass       },
+  { href: "/messages", label: "消息",   icon: MessageCircle },
+  { href: "/profile",  label: "我的",   icon: User          },
+];
+
+const ADMIN_TABS = [
+  { href: "/home",     label: "首页",    icon: Home          },
+  { href: "/admin",    label: "招新管理", icon: ClipboardList },
+  { href: "/messages", label: "消息",    icon: MessageCircle },
+  { href: "/profile",  label: "社团主页", icon: User          },
 ];
 
 export function BottomNav() {
   const pathname = usePathname();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    setIsAdmin(localStorage.getItem("cm_userRole") === "admin");
+  }, []);
+
+  const tabs = isAdmin ? ADMIN_TABS : STUDENT_TABS;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 flex md:hidden border-t border-border bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">

@@ -19,11 +19,12 @@ interface Message {
 }
 
 /**
- * `clubId` is the single unique key — matches Club.id from ALL_CLUBS.
- * Replaces the old random Date.now() id that caused duplicate key warnings.
+ * `id` is the single unique key (standard naming).
+ * Club conversations:  id = "club_7", "club_12", etc.
+ * Peer conversations:  id = "peer_<authorId>"
  */
 interface Conversation {
-  clubId: number;
+  id: string;
   clubName: string;
   adminName: string;
   avatarBg: string;
@@ -35,15 +36,44 @@ interface Conversation {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+//  HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+const AVATAR_COLORS = [
+  "bg-violet-500", "bg-sky-500", "bg-emerald-500", "bg-rose-500",
+  "bg-amber-500",  "bg-indigo-500", "bg-teal-500",  "bg-pink-500",
+];
+
+/** Deterministic color from any string — used for peer avatars. */
+function hashColor(s: string): string {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+
+/** Returns true if every item in the array has a non-empty string `id`. */
+function isValidConversationArray(arr: unknown): arr is Conversation[] {
+  return (
+    Array.isArray(arr) &&
+    arr.every(
+      (item) =>
+        item !== null &&
+        typeof item === "object" &&
+        typeof (item as Record<string, unknown>).id === "string" &&
+        ((item as Record<string, unknown>).id as string).length > 0,
+    )
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 //  CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
 
 const STORAGE_KEY = "clubmatch_conversations";
 
-// Seed conversations use real Club IDs (7 = 子衿汉服社, 12 = 模联, 14 = 青年创业社)
 const SEED_CONVERSATIONS: Conversation[] = [
   {
-    clubId: 7,
+    id: "club_7",
     clubName: "子衿汉服社",
     adminName: "社长 · 林慧",
     avatarBg: avatarColour(7),
@@ -59,7 +89,7 @@ const SEED_CONVERSATIONS: Conversation[] = [
     ],
   },
   {
-    clubId: 12,
+    id: "club_12",
     clubName: "模拟联合国协会",
     adminName: "主席 · 赵宇翔",
     avatarBg: avatarColour(12),
@@ -73,7 +103,7 @@ const SEED_CONVERSATIONS: Conversation[] = [
     ],
   },
   {
-    clubId: 14,
+    id: "club_14",
     clubName: "青年创业社",
     adminName: "社长 · 陈明",
     avatarBg: avatarColour(14),
@@ -97,63 +127,110 @@ function MessagesContent() {
   const searchParams = useSearchParams();
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeClubId,  setActiveClubId]  = useState<number | null>(null);
+  const [activeId,      setActiveId]      = useState<string | null>(null);
   const [searchQuery,   setSearchQuery]   = useState("");
   const [inputText,     setInputText]     = useState("");
   const [mobileView,    setMobileView]    = useState<"list" | "chat">("list");
   const [loaded,        setLoaded]        = useState(false);
+  const [adminClubName, setAdminClubName] = useState<string | null>(null);
 
-  const messagesEndRef   = useRef<HTMLDivElement>(null);
-  // Track which clubId URL param we've already processed to avoid re-running
-  const processedKeyRef  = useRef<string>("");
+  const messagesEndRef  = useRef<HTMLDivElement>(null);
+  const processedKeyRef = useRef<string>("");
 
   // ── 1. Load from localStorage (once on mount) ────────────────────────────
+  //      If stored data is dirty (missing valid `id` fields), nuke and reseed.
   useEffect(() => {
+    // Read admin identity
+    if (localStorage.getItem("cm_userRole") === "admin") {
+      setAdminClubName(localStorage.getItem("cm_adminClubName") || null);
+    }
+
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      const convs: Conversation[] = raw ? JSON.parse(raw) : SEED_CONVERSATIONS;
-      if (!raw) localStorage.setItem(STORAGE_KEY, JSON.stringify(SEED_CONVERSATIONS));
-      setConversations(convs);
+      const raw    = localStorage.getItem(STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+
+      if (isValidConversationArray(parsed)) {
+        setConversations(parsed);
+      } else {
+        // Dirty / stale / legacy data — clear and start fresh
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(SEED_CONVERSATIONS));
+        setConversations(SEED_CONVERSATIONS);
+      }
     } catch {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(SEED_CONVERSATIONS));
       setConversations(SEED_CONVERSATIONS);
     }
     setLoaded(true);
   }, []);
 
-  // ── 2. Handle ?clubId= URL param ─────────────────────────────────────────
+  // ── 2. Handle URL params: ?clubId= (legacy) or ?targetId= + ?targetName= ─
   useEffect(() => {
     if (!loaded) return;
 
-    const idStr  = searchParams.get("clubId") ?? "";
-    const key    = idStr || "none";
-    if (processedKeyRef.current === key) return; // already handled
+    const clubIdStr  = searchParams.get("clubId")     ?? "";
+    const targetId   = searchParams.get("targetId")   ?? "";
+    const targetName = searchParams.get("targetName") ?? "";
+
+    // Stable key for dedup guard
+    const key = clubIdStr ? `club_${clubIdStr}` : targetId ? `peer_${targetId}` : "none";
+    if (processedKeyRef.current === key) return;
     processedKeyRef.current = key;
 
-    const clubId = parseInt(idStr, 10);
-
-    if (isNaN(clubId)) {
-      // No clubId param → activate the first conversation
+    // ── Case A: ?targetId= — peer conversation ────────────────────────────
+    if (targetId) {
+      const convId = `peer_${targetId}`;
       setConversations((prev) => {
-        setActiveClubId(prev[0]?.clubId ?? null);
-        return prev; // no structural change — React will bail out
+        const existing = prev.find((c) => c.id === convId);
+        if (existing) {
+          setActiveId(convId);
+          setMobileView("chat");
+          if (existing.unread === 0) return prev;
+          return prev.map((c) => (c.id === convId ? { ...c, unread: 0 } : c));
+        }
+        // Create ONE new peer conversation — id is deterministic so re-routing
+        // to the same person never duplicates.
+        const displayName = targetName || targetId;
+        const newConv: Conversation = {
+          id: convId,
+          clubName: displayName,
+          adminName: "",
+          avatarBg: hashColor(targetId),
+          avatarInitial: displayName[0] ?? "?",
+          lastMessage: "发送第一条消息，开始沟通吧 👋",
+          lastTime: "刚刚",
+          unread: 0,
+          messages: [],
+        };
+        setActiveId(convId);
+        setMobileView("chat");
+        return [newConv, ...prev];
       });
       return;
     }
 
-    // Has valid clubId → find or create conversation
+    // ── Case B: ?clubId= — club conversation ─────────────────────────────
+    const clubId = parseInt(clubIdStr, 10);
+    if (isNaN(clubId)) {
+      setConversations((prev) => {
+        setActiveId(prev[0]?.id ?? null);
+        return prev;
+      });
+      return;
+    }
+
+    const convId = `club_${clubId}`;
     setConversations((prev) => {
-      const existing = prev.find((c) => c.clubId === clubId);
+      const existing = prev.find((c) => c.id === convId);
       if (existing) {
-        setActiveClubId(clubId);
+        setActiveId(convId);
         setMobileView("chat");
         if (existing.unread === 0) return prev;
-        return prev.map((c) => (c.clubId === clubId ? { ...c, unread: 0 } : c));
+        return prev.map((c) => (c.id === convId ? { ...c, unread: 0 } : c));
       }
-      // Create a new conversation for this club
       const clubData = ALL_CLUBS.find((c) => c.id === clubId);
       if (!clubData) return prev;
       const newConv: Conversation = {
-        clubId,
+        id: convId,
         clubName: clubData.name,
         adminName: "负责人",
         avatarBg: avatarColour(clubId),
@@ -163,7 +240,7 @@ function MessagesContent() {
         unread: 0,
         messages: [],
       };
-      setActiveClubId(clubId);
+      setActiveId(convId);
       setMobileView("chat");
       return [newConv, ...prev];
     });
@@ -175,15 +252,15 @@ function MessagesContent() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations));
   }, [conversations, loaded]);
 
-  // ── Auto-scroll to latest message ────────────────────────────────────────
-  const activeConv = conversations.find((c) => c.clubId === activeClubId) ?? null;
+  // ── Auto-scroll ───────────────────────────────────────────────────────────
+  const activeConv = conversations.find((c) => c.id === activeId) ?? null;
   const msgCount   = activeConv?.messages.length ?? 0;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [activeClubId, msgCount]);
+  }, [activeId, msgCount]);
 
-  // ── Filtered conversation list ────────────────────────────────────────────
+  // ── Filtered list ─────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     const q = searchQuery.trim();
     if (!q) return conversations;
@@ -193,23 +270,22 @@ function MessagesContent() {
   }, [conversations, searchQuery]);
 
   // ── Interactions ──────────────────────────────────────────────────────────
-  const selectConv = (clubId: number) => {
-    setActiveClubId(clubId);
+  const selectConv = (id: string) => {
+    setActiveId(id);
     setMobileView("chat");
     setConversations((prev) =>
-      prev.map((c) => (c.clubId === clubId ? { ...c, unread: 0 } : c)),
+      prev.map((c) => (c.id === id ? { ...c, unread: 0 } : c)),
     );
   };
 
   const sendMessage = () => {
-    if (!inputText.trim() || activeClubId === null) return;
+    if (!inputText.trim() || activeId === null) return;
     const now  = new Date();
     const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
-    // message id only needs to be unique within its conversation — Date.now() is fine here
     const msg: Message = { id: Date.now(), from: "user", text: inputText.trim(), time };
     setConversations((prev) =>
       prev.map((c) =>
-        c.clubId === activeClubId
+        c.id === activeId
           ? { ...c, messages: [...c.messages, msg], lastMessage: msg.text, lastTime: time }
           : c,
       ),
@@ -256,18 +332,18 @@ function MessagesContent() {
           </div>
         </div>
 
-        {/* Conversation list — key uses clubId string to guarantee uniqueness */}
+        {/* Conversation list — fallback key prevents crash if data is partially corrupt */}
         <div className="flex-1 overflow-y-auto">
           {filtered.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-gray-400">没有找到相关对话</p>
           ) : (
-            filtered.map((conv) => (
+            filtered.map((conv, index) => (
               <button
-                key={`conv_${conv.clubId}`}
-                onClick={() => selectConv(conv.clubId)}
+                key={conv.id || `fallback-${index}`}
+                onClick={() => selectConv(conv.id)}
                 className={cn(
                   "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50",
-                  activeClubId === conv.clubId && "border-r-2 border-primary-600 bg-primary-50",
+                  activeId === conv.id && "border-r-2 border-primary-600 bg-primary-50",
                 )}
               >
                 <div className={cn("relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white", conv.avatarBg)}>
@@ -313,7 +389,9 @@ function MessagesContent() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-gray-900">{activeConv.clubName}</p>
-                <p className="text-xs text-gray-400">{activeConv.adminName}</p>
+                {activeConv.adminName && (
+                  <p className="text-xs text-gray-400">{activeConv.adminName}</p>
+                )}
               </div>
               <button className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-400 transition-colors hover:bg-gray-100">
                 <MoreVertical size={17} />
@@ -328,7 +406,7 @@ function MessagesContent() {
                     {activeConv.avatarInitial}
                   </div>
                   <p className="text-sm font-medium text-gray-600">{activeConv.clubName}</p>
-                  <p className="text-xs text-gray-400">发送第一条消息，开始与社团沟通吧 👋</p>
+                  <p className="text-xs text-gray-400">发送第一条消息，开始沟通吧 👋</p>
                 </div>
               ) : (
                 <div className="flex flex-col gap-3">
@@ -363,13 +441,23 @@ function MessagesContent() {
             </div>
 
             {/* Input area */}
-            <div className="flex shrink-0 items-center gap-2.5 border-t border-gray-100 bg-white px-4 py-3">
+            <div className="shrink-0 border-t border-gray-100 bg-white px-4 pb-3 pt-2">
+              {adminClubName && (
+                <p className="mb-1.5 text-[11px] font-semibold text-amber-600">
+                  以「{adminClubName}」身份发送
+                </p>
+              )}
+              <div className="flex items-center gap-2.5">
               <input
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={`发消息给 ${activeConv.clubName}…`}
+                placeholder={
+                  adminClubName
+                    ? `以「${adminClubName}」身份回复…`
+                    : `发消息给 ${activeConv.clubName}…`
+                }
                 className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none transition focus:border-primary-300 focus:bg-white focus:ring-2 focus:ring-primary-100"
               />
               <button
@@ -385,6 +473,7 @@ function MessagesContent() {
               >
                 <Send size={16} />
               </button>
+              </div>
             </div>
           </>
         ) : (

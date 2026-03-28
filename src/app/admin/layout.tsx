@@ -1,12 +1,5 @@
-import type { Metadata } from "next";
-import { Sidebar } from "@/components/admin/Sidebar";
-
-export const metadata: Metadata = {
-  title: {
-    default: "Admin | ClubMatch",
-    template: "%s — ClubMatch Admin",
-  },
-};
+import { TopNav } from "@/components/layout/TopNav";
+import { BottomNav } from "@/components/layout/BottomNav";
 
 export default function AdminLayout({
   children,
@@ -14,11 +7,12 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
-      <Sidebar />
-      <div className="flex flex-1 flex-col overflow-hidden">
+    <>
+      <TopNav />
+      <main className="min-h-[calc(100dvh-4rem)] pb-20 md:pb-0">
         {children}
-      </div>
-    </div>
+      </main>
+      <BottomNav />
+    </>
   );
 }

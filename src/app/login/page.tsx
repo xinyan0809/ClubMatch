@@ -8,6 +8,7 @@ import {
   GraduationCap, Phone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ALL_CLUBS } from "@/data/clubs";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Role = "student" | "admin";
@@ -142,13 +143,15 @@ export default function LoginPage() {
   const [credential,   setCred]       = useState(""); // email or phone
   const [password,     setPassword]   = useState("");
   const [name,         setName]       = useState("");
+  const [adminClubId,  setAdminClubId] = useState<number>(0);
   const [showPassword, setShowPass]   = useState(false);
   const [isLoading,    setIsLoading]  = useState(false);
   const [error,        setError]      = useState("");
 
-  const testimonial  = TESTIMONIALS[role];
-  const isValidUni   = university === VALID_UNI;
-  const canSubmit    = isValidUni && credential.trim().length > 0 && password.length >= 6;
+  const testimonial    = TESTIMONIALS[role];
+  const isValidUni     = university === VALID_UNI;
+  const adminClubValid = role !== "admin" || adminClubId !== 0;
+  const canSubmit      = isValidUni && credential.trim().length > 0 && password.length >= 6 && adminClubValid;
 
   const clearError = () => setError("");
 
@@ -178,12 +181,27 @@ export default function LoginPage() {
     await new Promise((r) => setTimeout(r, 900));
     setIsLoading(false);
 
+    // ── Wipe previous session to prevent cross-role contamination ──────────
+    // ONLY remove session/identity keys — global feeds and messages are kept.
+    [
+      "cm_userName", "cm_userProfile", "cm_userRole", "cm_userUniversity",
+      "cm_adminClubId", "cm_adminClubName", "cm_adminProfile",
+    ].forEach((k) => localStorage.removeItem(k));
+
     // Persist session to localStorage so downstream pages can personalise UX
     localStorage.setItem("cm_userRole", role);
     localStorage.setItem("cm_userUniversity", "中国传媒大学");
     // Only save name on signup (signin has no name field)
     if (mode === "signup" && name.trim()) {
       localStorage.setItem("cm_userName", name.trim());
+    }
+    // Save admin club details
+    if (role === "admin" && adminClubId !== 0) {
+      const club = ALL_CLUBS.find((c) => c.id === adminClubId);
+      if (club) {
+        localStorage.setItem("cm_adminClubId",   club.id.toString());
+        localStorage.setItem("cm_adminClubName", club.name);
+      }
     }
 
     router.push(role === "student" ? "/home" : "/admin");
@@ -386,6 +404,49 @@ export default function LoginPage() {
               onChange={(v) => { setUniversity(v); clearError(); }}
               error={!!error && !isValidUni}
             />
+
+            {/* Club selector — admin only */}
+            {role === "admin" && (
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="adminClub" className="text-xs font-semibold text-gray-700">
+                  选择您的社团
+                </label>
+                <div className="relative flex items-center">
+                  <Building2
+                    size={15}
+                    className={cn(
+                      "pointer-events-none absolute left-3.5 transition-colors",
+                      adminClubId === 0 ? "text-gray-400" : "text-primary-500",
+                    )}
+                  />
+                  <select
+                    id="adminClub"
+                    value={adminClubId}
+                    onChange={(e) => { setAdminClubId(Number(e.target.value)); clearError(); }}
+                    className={cn(
+                      "w-full appearance-none rounded-xl border bg-gray-50 py-2.5 pl-9 pr-4 text-sm cursor-pointer",
+                      "transition-all duration-150 focus:bg-white focus:outline-none focus:ring-2",
+                      adminClubId !== 0
+                        ? "border-primary-300 text-gray-900 focus:border-primary-400 focus:ring-primary-100"
+                        : "border-gray-200 text-gray-500 focus:border-primary-400 focus:ring-primary-100",
+                    )}
+                  >
+                    <option value={0} disabled>请选择您管理的社团</option>
+                    {ALL_CLUBS.map((club) => (
+                      <option key={club.id} value={club.id}>
+                        {club.name}
+                      </option>
+                    ))}
+                  </select>
+                  {adminClubId !== 0 && (
+                    <CheckCircle2
+                      size={15}
+                      className="pointer-events-none absolute right-3.5 text-primary-500"
+                    />
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Credential */}
             <InputField
