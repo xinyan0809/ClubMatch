@@ -21,14 +21,20 @@ const ADMIN_TABS = [
 ];
 
 export function BottomNav() {
-  const pathname = usePathname();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const pathname    = usePathname();
+  const [isAdmin,    setIsAdmin]    = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    setIsAdmin(localStorage.getItem("cm_userRole") === "admin");
+    const role = localStorage.getItem("cm_userRole");
+    setIsLoggedIn(!!role);
+    setIsAdmin(role === "admin");
   }, []);
 
   const tabs = isAdmin ? ADMIN_TABS : STUDENT_TABS;
+
+  // Don't render nav bar for unauthenticated users
+  if (!isLoggedIn) return null;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 flex md:hidden border-t border-border bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
