@@ -688,7 +688,6 @@ export default function HomePage() {
                     <SquarePen size={13} />
                     发布
                   </button>
-                  <button className="text-xs font-semibold text-primary-600 hover:underline">查看全部</button>
                 </div>
               </div>
               {posts.map((post) => (

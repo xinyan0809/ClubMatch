@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Compass, MessageCircle, User, Bell, ClipboardList, LogOut } from "lucide-react";
+import { Home, Compass, MessageCircle, User, ClipboardList, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -96,10 +96,7 @@ export function TopNav() {
 
             {/* ── Right side: bell + avatar + logout ───────────── */}
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" aria-label="通知">
-                <Bell size={18} className="text-gray-600" />
-              </Button>
-              <Link href="/profile" aria-label="前往个人主页">
+<Link href="/profile" aria-label="前往个人主页">
                 <Avatar className="h-8 w-8 cursor-pointer ring-2 ring-transparent hover:ring-primary-300 transition-all">
                   <AvatarImage src="" alt="用户头像" />
                   <AvatarFallback>{initial}</AvatarFallback>
